@@ -1,0 +1,12 @@
+.env
+.venv/
+.idea/
+*.pyc
+*.pyo
+responses/
+*.log
+.vscode/
+*pytest_cache/
+*.http
+*__pycache__
+dist/
