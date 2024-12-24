@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mdfb"
-version = "0.6.0"
+version = "1.0.0"
 description = "A CLI for downloading posts in bulk from Bluesky from specified a account"
 authors = ["Ibrahim Haji Abdi <ibrahim.hajiabdi09@gmail.com>"]
 readme = "README.md"
@@ -22,7 +22,7 @@ tenacity = "^9.0.0"
 
 [project]
 name = "mdfb"
-version = "0.6.0"
+version = "1.0.0"
 authors = [
   { name="Ibrahim Haji Abdi", email="ibrahim.hajiabdi09@gmail.com" },
 ]
