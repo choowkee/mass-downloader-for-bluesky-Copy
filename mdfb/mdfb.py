@@ -3,6 +3,7 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from mdfb.core.get_post_identifiers import get_post_identifiers
+from mdfb.core.archive import get_all_post_identifiers
 from mdfb.core.fetch_post_details import fetch_post_details
 from mdfb.core.download_blobs import download_blobs
 from mdfb.core.resolve_handle import resolve_handle
@@ -11,11 +12,14 @@ from mdfb.utils.helpers import split_list
 from mdfb.utils.logging import setup_logging
 from mdfb.utils.constants import DEFAULT_THREADS 
 
-def fetch_posts(did: str, limit: int, post_types: dict) -> list[str]:
+def fetch_posts(did: str, post_types: dict, limit: int = None, archive: bool = False) -> list[str]:
     post_uris = []
     for post_type, wanted in post_types.items():
         if wanted:
-            post_uris.extend(get_post_identifiers(did, limit, post_type))
+            if archive:
+                post_uris.extend(get_all_post_identifiers(did, post_type))
+            else:
+                post_uris.extend(get_post_identifiers(did, limit, post_type))
     return post_uris
 
 def process_posts(posts: list, num_threads: int) -> list[dict]:
@@ -44,21 +48,24 @@ def main():
     parser = ArgumentParser()
 
     parser.add_argument("directory", action="store", help="Directory for where all downloaded post will be stored")
-    parser.add_argument("-l", "--limit", action="store", required=True, help="The number of posts to be downloaded")  
+    # parser.add_argument("-l", "--limit", action="store", required=True, help="The number of posts to be downloaded")  
     parser.add_argument("--like", action="store_true", help="To retreive liked posts")
     parser.add_argument("--post", action="store_true", help="To retreive posts")
     parser.add_argument("--repost", action="store_true", help="To retreive reposts")
     parser.add_argument("--threads", action="store", help="Number of threads, maximum of 3 threads")
 
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--did", action="store", help="The DID associated with the account")
-    group.add_argument("--handle", action="store", help="The handle for the account e.g. johnny.bsky.social")
+    group_archive_limit = parser.add_mutually_exclusive_group(required=True)
+    group_archive_limit.add_argument("-l", "--limit", action="store", help="The number of posts to be downloaded") 
+    group_archive_limit.add_argument("--archive", action="store_true", help="To archive all posts of the specified types")
+
+    group_identifier = parser.add_mutually_exclusive_group(required=True)
+    group_identifier.add_argument("--did", action="store", help="The DID associated with the account")
+    group_identifier.add_argument("--handle", action="store", help="The handle for the account e.g. johnny.bsky.social")
     
     args = parser.parse_args()
     try:
         did = validate_did(args.did) if args.did else resolve_handle(args.handle)
         directory = validate_directory(args.directory)
-        limit = validate_limit(args.limit)
 
         setup_logging(directory)
 
@@ -73,9 +80,12 @@ def main():
             "post": args.post
         }
 
-
         print("Fetching post identifiers...")
-        posts = fetch_posts(did, limit, post_types)
+        if args.archive:
+            posts = fetch_posts(did, post_types, archive=True)
+        else:
+            limit = validate_limit(args.limit)
+            posts = fetch_posts(did, post_types, limit=limit)
 
         wanted_post_types = [post_type for post_type, wanted in post_types.items() if wanted]
         account = args.handle if args.handle else did

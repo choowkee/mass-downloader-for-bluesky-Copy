@@ -10,3 +10,4 @@ responses/
 *.http
 *__pycache__
 dist/
+media/
