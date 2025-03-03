@@ -3,7 +3,6 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from mdfb.core.get_post_identifiers import get_post_identifiers
-from mdfb.core.archive import get_all_post_identifiers
 from mdfb.core.fetch_post_details import fetch_post_details
 from mdfb.core.download_blobs import download_blobs
 from mdfb.core.resolve_handle import resolve_handle
@@ -16,7 +15,7 @@ def fetch_posts(did: str, post_types: dict, limit: int = 0, archive: bool = Fals
     post_uris = []
     for post_type, wanted in post_types.items():
         if wanted:
-            post_uris.extend(get_post_identifiers(did, post_type, limit=limit, archive=True))
+            post_uris.extend(get_post_identifiers(did, post_type, limit=limit, archive=archive))
     return post_uris
 
 def process_posts(posts: list, num_threads: int) -> list[dict]:
