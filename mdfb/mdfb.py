@@ -12,14 +12,11 @@ from mdfb.utils.helpers import split_list
 from mdfb.utils.logging import setup_logging
 from mdfb.utils.constants import DEFAULT_THREADS 
 
-def fetch_posts(did: str, post_types: dict, limit: int = None, archive: bool = False) -> list[str]:
+def fetch_posts(did: str, post_types: dict, limit: int = 0, archive: bool = False) -> list[str]:
     post_uris = []
     for post_type, wanted in post_types.items():
         if wanted:
-            if archive:
-                post_uris.extend(get_all_post_identifiers(did, post_type))
-            else:
-                post_uris.extend(get_post_identifiers(did, limit, post_type))
+            post_uris.extend(get_post_identifiers(did, post_type, limit=limit, archive=True))
     return post_uris
 
 def process_posts(posts: list, num_threads: int) -> list[dict]:
@@ -48,7 +45,6 @@ def main():
     parser = ArgumentParser()
 
     parser.add_argument("directory", action="store", help="Directory for where all downloaded post will be stored")
-    # parser.add_argument("-l", "--limit", action="store", required=True, help="The number of posts to be downloaded")  
     parser.add_argument("--like", action="store_true", help="To retreive liked posts")
     parser.add_argument("--post", action="store_true", help="To retreive posts")
     parser.add_argument("--repost", action="store_true", help="To retreive reposts")

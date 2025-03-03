@@ -8,15 +8,15 @@ import re, time, logging
 from mdfb.utils.constants import DELAY
 
 
-def get_post_identifiers(did: str, limit: int, feed_type: str) -> list[str]:
+def get_post_identifiers(did: str, feed_type: str, limit: int = 0, archive: bool = False) -> list[str]:
     """
     get_post_identifiers: Gets the given amount AT-URIs of the posts wanted from the desired account 
 
     Args:
         did (str): DID of the target account
-        limit (int): The amount wanted to get
         feed_type (str): The type of post wanted from the account: like, repost and post
-
+        limit (optional, default=0, int): The amount wanted to get
+        archive (optional, default=False, bool): Will download all posts of the wanted type
     Raises:
         SystemExit: If there is a failure to retreive posts
 
@@ -27,8 +27,8 @@ def get_post_identifiers(did: str, limit: int, feed_type: str) -> list[str]:
     post_uris = []
     logger = logging.getLogger(__name__)
     client = Client()
-    while limit > 0:
-        fetch_amount = min(100, limit)
+    while limit > 0 or archive:
+        fetch_amount = 100 if archive else min(100, limit)
         try:
             logger.info(f"Fetching up to {fetch_amount} posts for DID: {did}, feed_type: {feed_type}")
             res = ComAtprotoRepoNamespace(client).list_records(ParamsDict(
