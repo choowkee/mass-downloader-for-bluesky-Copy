@@ -65,7 +65,9 @@ The maximum number of threads is currently 3, that can be changed in the ``mdfb/
 - ``--did, -d``
   - The DID of the target account. 
 - ``--limit, -l``
-  - The amount of posts that want to be downloaded. **Required**.
+  - The amount of posts that want to be downloaded.
+- ``--archive``
+  - Downloads all posts from the selected post type.
 - ``directory``
   - Positional argument, where all the downloaded files are to be located. **Required**.
 - ``--threads``
@@ -78,4 +80,5 @@ The maximum number of threads is currently 3, that can be changed in the ``mdfb/
   - To retrieved posts
 ### Note
 At least one of the flags: ``--like``, ``--repost``, ``--post`` is **required**.
-In addition, ``--did, -d`` and ``--handle`` are mutually exclusive, and at least one of them is **required** as well. 
+
+Both (``--did, -d`` and ``--handle``) and (``--archive`` and ``--limit, -l``) are mutually exclusive, and at least one of them is **required** as well. 
