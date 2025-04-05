@@ -48,20 +48,21 @@ def main():
     parser.add_argument("--post", action="store_true", help="To retreive posts")
     parser.add_argument("--repost", action="store_true", help="To retreive reposts")
     parser.add_argument("--threads", action="store", help="Number of threads, maximum of 3 threads")
+    parser.add_argument("--format", action="store", help="Format string for filename e.g '{RKEY}_{DID}'. Valid keywords are: [RKEY, HANDLE, TEXT, DISPLAY_NAME, DID]")
 
     group_archive_limit = parser.add_mutually_exclusive_group(required=True)
-    group_archive_limit.add_argument("-l", "--limit", action="store", help="The number of posts to be downloaded") 
+    group_archive_limit.add_argument("--limit", "-l", action="store", help="The number of posts to be downloaded") 
     group_archive_limit.add_argument("--archive", action="store_true", help="To archive all posts of the specified types")
 
     group_identifier = parser.add_mutually_exclusive_group(required=True)
-    group_identifier.add_argument("--did", action="store", help="The DID associated with the account")
+    group_identifier.add_argument("--did", "-d", action="store", help="The DID associated with the account")
     group_identifier.add_argument("--handle", action="store", help="The handle for the account e.g. johnny.bsky.social")
     
     args = parser.parse_args()
     try:
         did = validate_did(args.did) if args.did else resolve_handle(args.handle)
         directory = validate_directory(args.directory)
-
+        filename_format_string = validate_format(args.format) if args.format else ""
         setup_logging(directory)
 
         num_threads = validate_threads(args.threads) if args.threads else DEFAULT_THREADS
@@ -96,7 +97,10 @@ def main():
             with ThreadPoolExecutor(max_workers=num_threads) as executor:
                 futures = []
                 for batch_post_link in post_links:
-                    futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar))
+                    if not filename_format_string:
+                        futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar))
+                    else:
+                        futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar, filename_format_string))
                     
     except Exception as e:
         print(f"Error: {e}")

@@ -36,18 +36,25 @@ You will need to be inside a poetry shell to use ``mdfb`` if installed manually
 
 Some example commands would be:
 
-#### Linux
 ```bash
-mdfb --handle bsky.app -l 10 --like ./media/
+mdfb --handle bsky.app -l 10 --like --threads 3 --format "{RKEY}_{HANDLE}" ./media/
 ```
 
-#### Windows
 ```bash
-mdfb --handle bsky.app -l 100 --like --repost --post ./media/
+mdfb -d did:plc:z72i7hdynmk6r22z27h6tvur --archive --like --threads 3 --format "{DID}_{HANDLE}" ./media/
 ```
 
 ### Naming Convention
-``mdfb``'s naming convention is: ``"{rkey}_{handle}_{text}"``, if it is downloading a post with multiple images then the naming will be: ``"{rkey}_{handle}_{text}_{i}"``, where "i" represents the order of the images in the post ranging from 1 - 4. In addition, the filenames are limited to 256 bytes and will be truncated down to that size. 
+By default, ``mdfb``'s naming convention is: ``"{rkey}_{handle}_{text}"``. If it is downloading a post with multiple images then the naming will be: ``"{rkey}_{handle}_{text}_{i}"``, where "i" represents the order of the images in the post ranging from 1 - 4. In addition, the filenames are limited to 256 bytes and will be truncated down to that size. 
+
+However, you can specify the name of the files by using the ``--format`` flag and passing a valid format string, e.g. ``"{RKEY}_{DID}"``. You can put anything in the format string **inbetween the keywords**. This is **case-sensitive** 
+
+For ``--format``, the valid keywords are:
+- ``RKEY`` 
+- ``DID`` 
+- ``HANDLE`` 
+- ``TEXT`` 
+- ``DISPLAY_NAME`` 
 
 ### Download Amount
 When specifying the limit, this will be true for all types of post downloaded. For example: 
@@ -55,6 +62,13 @@ When specifying the limit, this will be true for all types of post downloaded. F
 mdfb --handle bsky.app -l 100 --like --repost --post ./media/
 ```
 This would download 100 likes, reposts and post, totalling 300 posts downloaded.
+
+Furthermore, you can archive whole accounts. For exmaple:
+```bash
+mdfb --handle bsky.app --archive --like --repost --threads 3 --format "{DID}_{HANDLE}" ./media/
+```
+
+This would download all likes and reposts.
 
 ### Note
 The maximum number of threads is currently 3, that can be changed in the ``mdfb/utils/constants.py`` file. Furthermore, there are more constants that can be changed in that file, such as delay between each request and the number of retires before marking that post as a failure and continuing.
@@ -72,13 +86,16 @@ The maximum number of threads is currently 3, that can be changed in the ``mdfb/
   - Positional argument, where all the downloaded files are to be located. **Required**.
 - ``--threads``
   - The amount of threads wanted to download posts more efficiently, maximum number of threads is 3.
+- ``--format``
+  - Format string that file's will use for their name. Furthermore the keywords used are **case-sensitive** and should be all upper case.
 - ``--like``
   - To retrieved liked posts
 - ``--repost``
   - To retrieved reposts
 - ``--post``
   - To retrieved posts
+
 ### Note
 At least one of the flags: ``--like``, ``--repost``, ``--post`` is **required**.
 
-Both (``--did, -d`` and ``--handle``) and (``--archive`` and ``--limit, -l``) are mutually exclusive, and at least one of them is **required** as well. 
+Both (``--did, -d`` and ``--handle``) and (``--archive`` and ``--limit, -l``) are mutually exclusive, and one of each of them is **required** as well.
