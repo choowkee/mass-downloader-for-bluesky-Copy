@@ -1,7 +1,8 @@
 import logging
 import os
 import re
-from mdfb.utils.constants import MAX_THREADS
+import string
+from mdfb.utils.constants import MAX_THREADS, VALID_FILENAME_OPTIONS
 
 def validate_directory(directory: str) -> str:
     if not os.path.exists(directory) or not os.path.isdir(directory):
@@ -31,6 +32,13 @@ def validate_threads(threads: str) -> int:
     if threads < 1:
         raise ValueError("Please set threads to 1 or more")
     return threads
+
+def validate_format(filename_format_string: str) -> str:
+    formatter = string.Formatter()
+    for _, field_name, _, _ in formatter.parse(filename_format_string):
+        if field_name and field_name not in VALID_FILENAME_OPTIONS:
+            raise ValueError(f"The format string provided has invalid keyword: {field_name}") 
+    return filename_format_string
 
 def validate_no_posts(posts: list, account: str, post_types: list):
     if not posts:

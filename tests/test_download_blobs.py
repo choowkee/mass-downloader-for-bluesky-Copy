@@ -20,11 +20,14 @@ def test_truncate_filename(mocker):
     assert is_valid_utf8(result) == True
 
 def test_make_base_filename(mocker):
-    rkey = "3213213mkmlk"
-    text = "example_filename"
-    handle = "handle_example"
-    result = download_blobs._make_base_filename(rkey, text, handle)
-    assert result == f"{rkey}_{handle}_{text}"
+    filename_options = {
+        "RKEY": "3213213mkmlk",
+        "TEXT": "example_filename",
+        "HANDLE": "handle_example"
+    }
+    filename_format_string = "{RKEY}_{TEXT}_{HANDLE}"
+    result = download_blobs._make_base_filename(filename_options, filename_format_string)
+    assert result == f"{filename_options["RKEY"]}_{filename_options["TEXT"]}_{filename_options["HANDLE"]}"
 
 def test_append_extension_mime_type(mocker):
     mime_type = "image/jpeg"

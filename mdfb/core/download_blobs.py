@@ -7,12 +7,12 @@ import re, time
 from pathvalidate import sanitize_filename
 import encodings
 import logging
-from mdfb.utils.constants import DELAY, RETRIES, EXP_WAIT_MAX, EXP_WAIT_MIN, EXP_WAIT_MULTIPLIER
+from mdfb.utils.constants import DELAY, RETRIES, EXP_WAIT_MAX, EXP_WAIT_MIN, EXP_WAIT_MULTIPLIER, VALID_FILENAME_OPTIONS
 from tqdm import tqdm
 
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-def download_blobs(posts: list[dict], file_path: str, progress_bar: tqdm) -> None:
+def download_blobs(posts: list[dict], file_path: str, progress_bar: tqdm, filename_format_string: str = "{RKEY}_{HANDLE}_{TEXT}") -> None:
     """
     download_blobs: for the given posts, returned from fetch_post_details(), and filepath, downloads the associated blobs for each post.
 
@@ -24,7 +24,11 @@ def download_blobs(posts: list[dict], file_path: str, progress_bar: tqdm) -> Non
     logger = logging.getLogger(__name__)
     for post in posts:
         did = post["did"]
-        filename = _make_base_filename(post["rkey"], post["text"], post["handle"])
+        filename_options = {}
+        for valid_filename_option in VALID_FILENAME_OPTIONS:
+            if valid_filename_option in filename_format_string:
+                filename_options[valid_filename_option] = post[valid_filename_option.lower()]
+        filename = _make_base_filename(filename_options, filename_format_string)
         if "video_cid" in post:
             video_filename = _append_extension(filename, post["mime_type"])
             success = _get_blob_with_retries(did, post["video_cid"], video_filename, file_path, logger)
@@ -71,8 +75,8 @@ def _get_blob(did: str, cid: str, filename: str, file_path: str, logger: logging
         logger.error(f"Error occured for downloading this file, DID: {did}, CID: {cid}")
         raise 
     
-def _make_base_filename(rkey: str, text: str, handle: str) -> str:
-    filename = f"{rkey}_{handle}_{text}"
+def _make_base_filename(filename_options: dict, format_filename: str) -> str:
+    filename = format_filename.format(**filename_options)
     filename = _truncate_filename(filename, 245)
     return sanitize_filename(filename)
 
