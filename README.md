@@ -47,7 +47,7 @@ mdfb -d did:plc:z72i7hdynmk6r22z27h6tvur --archive --like --threads 3 --format "
 ### Naming Convention
 By default, ``mdfb``'s naming convention is: ``"{rkey}_{handle}_{text}"``. If it is downloading a post with multiple images then the naming will be: ``"{rkey}_{handle}_{text}_{i}"``, where "i" represents the order of the images in the post ranging from 1 - 4. In addition, the filenames are limited to 256 bytes and will be truncated down to that size. 
 
-However, you can specify the name of the files by using the ``--format`` flag and passing a valid format string, e.g. ``"{RKEY}_{DID}"``. You can put anything in the format string **inbetween the keywords**. This is **case-sensitive** 
+However, you can specify the name of the files by using the ``--format`` flag and passing a valid format string, e.g. ``"{RKEY}_{DID}"``. You can put anything in the format string **inbetween the keywords**. This is **case-sensitive**.
 
 For ``--format``, the valid keywords are:
 - ``RKEY`` 

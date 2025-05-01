@@ -20,6 +20,7 @@ def download_blobs(posts: list[dict], file_path: str, progress_bar: tqdm, filena
         posts (list[dict]): post details returned from fetch_post_details()
         file_path (str): filepath for where the files will be stored
         progress_bar (tqdm): progress bar
+        filename_format_string (optional, default="{RKEY}_{HANDLE}_{TEXT}", str): the format the filename will follow
     """
     logger = logging.getLogger(__name__)
     for post in posts:
@@ -97,7 +98,7 @@ def _truncate_filename(filename: str, MAX_BYTE: int) -> str:
     Args:
         filename (str): string of the filename
         MAX_BYTE (int): maximum bytes allowed
-
+    
     Returns:
         str: truncated filename such that it is within the maximum number of bytes
     """
