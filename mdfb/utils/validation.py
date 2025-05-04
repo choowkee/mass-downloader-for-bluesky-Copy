@@ -2,7 +2,9 @@ import logging
 import os
 import re
 import string
+import platformdirs
 from mdfb.utils.constants import MAX_THREADS, VALID_FILENAME_OPTIONS
+from mdfb.utils.database import create_db
 
 def validate_directory(directory: str) -> str:
     if not os.path.exists(directory) or not os.path.isdir(directory):
@@ -40,6 +42,13 @@ def validate_format(filename_format_string: str) -> str:
             raise ValueError(f"The format string provided has invalid keyword: {field_name}") 
     return filename_format_string
 
-def validate_no_posts(posts: list, account: str, post_types: list):
-    if not posts:
+def validate_no_posts(posts: list, account: str, post_types: list, update: bool):
+    if not posts and update:
+        raise ValueError(f"Already downloaded the latest post: {account}, for post_type(s): {post_types}")
+    elif not posts:    
         raise ValueError(f"There are no posts associated with account: {account}, for post_type(s): {post_types}")
+
+def validate_database():
+    if not os.path.isdir(platformdirs.user_data_path(appname="mdfb")):
+        path = platformdirs.user_data_dir(appname="mdfb", ensure_exists=True)
+        create_db(path)

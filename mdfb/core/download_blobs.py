@@ -1,5 +1,6 @@
 import json
 import os
+import sqlite3
 from atproto_client.namespaces.sync_ns import ComAtprotoSyncNamespace
 from atproto_client.models.com.atproto.repo.list_records import ParamsDict
 from atproto import Client
@@ -8,6 +9,7 @@ from pathvalidate import sanitize_filename
 import encodings
 import logging
 from mdfb.utils.constants import DELAY, RETRIES, EXP_WAIT_MAX, EXP_WAIT_MIN, EXP_WAIT_MULTIPLIER, VALID_FILENAME_OPTIONS
+from mdfb.utils.database import insert_post, connect_db
 from tqdm import tqdm
 
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -23,6 +25,7 @@ def download_blobs(posts: list[dict], file_path: str, progress_bar: tqdm, filena
         filename_format_string (optional, default="{RKEY}_{HANDLE}_{TEXT}", str): the format the filename will follow
     """
     logger = logging.getLogger(__name__)
+    sucessful_downloads = []
     for post in posts:
         did = post["did"]
         filename_options = {}
@@ -50,7 +53,11 @@ def download_blobs(posts: list[dict], file_path: str, progress_bar: tqdm, filena
         with open(f"{os.path.join(file_path, filename)}.json", "wt") as json_file:
             json.dump(post["response"], json_file, indent=4)
         logger.info(f"Sucessful wrote file: {filename + ".json"}")
+        sucessful_downloads.append((post["user_did"], post["user_post_uri"], post["feed_type"], post["poster_post_uri"]))
         progress_bar.update(1)
+    con = connect_db()
+    insert_post(con.cursor(), sucessful_downloads)
+    con.commit()
 
 def _get_blob_with_retries(did: str, cid: str, filename: str, file_path: str, logger: logging.Logger):
     try:

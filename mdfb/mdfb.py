@@ -2,20 +2,23 @@ from argparse import ArgumentParser
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import traceback
+
 from mdfb.core.get_post_identifiers import get_post_identifiers
 from mdfb.core.fetch_post_details import fetch_post_details
 from mdfb.core.download_blobs import download_blobs
 from mdfb.core.resolve_handle import resolve_handle
 from mdfb.utils.validation import *
 from mdfb.utils.helpers import split_list
+from mdfb.utils.database import connect_db
 from mdfb.utils.logging import setup_logging
 from mdfb.utils.constants import DEFAULT_THREADS 
 
-def fetch_posts(did: str, post_types: dict, limit: int = 0, archive: bool = False) -> list[str]:
+def fetch_posts(did: str, post_types: dict, limit: int = 0, archive: bool = False, update: bool = False) -> list[str]:
     post_uris = []
     for post_type, wanted in post_types.items():
         if wanted:
-            post_uris.extend(get_post_identifiers(did, post_type, limit=limit, archive=archive))
+            post_uris.extend(get_post_identifiers(did, post_type, limit=limit, archive=archive, update=update))
     return post_uris
 
 def process_posts(posts: list, num_threads: int) -> list[dict]:
@@ -47,12 +50,13 @@ def main():
     parser.add_argument("--like", action="store_true", help="To retreive liked posts")
     parser.add_argument("--post", action="store_true", help="To retreive posts")
     parser.add_argument("--repost", action="store_true", help="To retreive reposts")
-    parser.add_argument("--threads", action="store", help="Number of threads, maximum of 3 threads")
+    parser.add_argument("--threads", action="store", help=f"Number of threads, maximum of {MAX_THREADS} threads")
     parser.add_argument("--format", action="store", help="Format string for filename e.g '{RKEY}_{DID}'. Valid keywords are: [RKEY, HANDLE, TEXT, DISPLAY_NAME, DID]")
 
     group_archive_limit = parser.add_mutually_exclusive_group(required=True)
     group_archive_limit.add_argument("--limit", "-l", action="store", help="The number of posts to be downloaded") 
     group_archive_limit.add_argument("--archive", action="store_true", help="To archive all posts of the specified types")
+    group_archive_limit.add_argument("--update", action="store_true", help="Downloads latest posts that haven't been downloaded")
 
     group_identifier = parser.add_mutually_exclusive_group(required=True)
     group_identifier.add_argument("--did", "-d", action="store", help="The DID associated with the account")
@@ -63,6 +67,7 @@ def main():
         did = validate_did(args.did) if args.did else resolve_handle(args.handle)
         directory = validate_directory(args.directory)
         filename_format_string = validate_format(args.format) if args.format else ""
+        validate_database()
         setup_logging(directory)
 
         num_threads = validate_threads(args.threads) if args.threads else DEFAULT_THREADS
@@ -79,13 +84,15 @@ def main():
         print("Fetching post identifiers...")
         if args.archive:
             posts = fetch_posts(did, post_types, archive=True)
+        elif args.update:
+            posts = fetch_posts(did, post_types, archive=True, update=True)
         else:
             limit = validate_limit(args.limit)
             posts = fetch_posts(did, post_types, limit=limit)
 
         wanted_post_types = [post_type for post_type, wanted in post_types.items() if wanted]
         account = args.handle if args.handle else did
-        validate_no_posts(posts, account, wanted_post_types)
+        validate_no_posts(posts, account, wanted_post_types, args.update)
 
         print("Getting post details...")
         post_details = process_posts(posts, num_threads)
@@ -101,7 +108,6 @@ def main():
                         futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar))
                     else:
                         futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar, filename_format_string))
-                    
     except Exception as e:
         print(f"Error: {e}")
         
