@@ -17,6 +17,7 @@ pathvalidate = "^3.2.1"
 tqdm = "^4.67.1"
 tenacity = "^9.0.0"
 platformdirs = "^4.3.7"
+h11 = "^0.15.0"
 
 [tool.poetry.group.dev.dependencies]
 requests-mock = "^1.12.1"
