@@ -49,6 +49,9 @@ def validate_no_posts(posts: list, account: str, post_types: list, update: bool)
         raise ValueError(f"There are no posts associated with account: {account}, for post_type(s): {post_types}")
 
 def validate_database():
-    if not os.path.isdir(platformdirs.user_data_path(appname="mdfb")):
+    path = platformdirs.user_data_path(appname="mdfb")
+    if not os.path.isdir(path):
         path = platformdirs.user_data_dir(appname="mdfb", ensure_exists=True)
+        create_db(path)
+    elif os.path.isdir(path) and not os.path.isfile(os.path.join(platformdirs.user_data_path(appname="mdfb"), "mdfb.db")): 
         create_db(path)

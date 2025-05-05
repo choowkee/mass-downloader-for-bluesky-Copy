@@ -6,7 +6,9 @@ from atproto_client.models.com.atproto.repo.list_records import ParamsDict
 from atproto import Client
 from atproto.exceptions import AtProtocolError
 
-from mdfb.utils.constants import DELAY
+from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
+
+from mdfb.utils.constants import DELAY, EXP_WAIT_MAX, EXP_WAIT_MIN, EXP_WAIT_MULTIPLIER, RETRIES
 from mdfb.utils.database import check_post_exists, connect_db
 
 
@@ -35,19 +37,12 @@ def get_post_identifiers(did: str, feed_type: str, limit: int = 0, archive: bool
 
     while limit > 0 or archive:
         fetch_amount = 100 if archive else min(100, limit)
-        try:
-            logger.info(f"Fetching up to {fetch_amount} posts for DID: {did}, feed_type: {feed_type}")
-            res = ComAtprotoRepoNamespace(client).list_records(ParamsDict(
-                collection=f"app.bsky.feed.{feed_type}",
-                repo=did,
-                limit=fetch_amount,
-                cursor=cursor,
-            ))  
-            res = json.loads(res.model_dump_json())
-        except AtProtocolError as e:
-            logger.error(f"Failure to fetch posts: {e}", exc_info=True) 
-            print("Failure to get fetch posts. See logs for details.")
-            raise SystemExit(1) from e
+        res = _get_post_identifiers_with_retires(ParamsDict(
+            collection=f"app.bsky.feed.{feed_type}",
+            repo=did,
+            limit=fetch_amount,
+            cursor=cursor,
+        ), client, fetch_amount, logger)  
         
         limit -= fetch_amount
         logger.info("Successful retrieved: %d posts, %d remaining", fetch_amount, limit)
@@ -73,3 +68,20 @@ def get_post_identifiers(did: str, feed_type: str, limit: int = 0, archive: bool
             post_uris.append(uris)
         time.sleep(DELAY)
     return post_uris
+
+def _get_post_identifiers_with_retires(params: ParamsDict, client: Client, fetch_amount: int, logger: logging.Logger):
+    try:
+        return _get_post_identifiers(params, client, fetch_amount, logger)
+    except (AtProtocolError, RetryError) as e:
+        logger.error(f"Failure to fetch posts: {e}", exc_info=True) 
+        raise
+
+@retry(
+    wait=wait_exponential(multiplier=EXP_WAIT_MULTIPLIER, min=EXP_WAIT_MIN, max=EXP_WAIT_MAX), 
+    stop=stop_after_attempt(RETRIES)
+)
+def _get_post_identifiers(params: ParamsDict, client: Client, fetch_amount: int, logger: logging.Logger):
+    logger.info(f"Attempting to fetch up to {fetch_amount} posts for DID: {params["repo"]}, feed_type: {params["collection"]}")
+    res = ComAtprotoRepoNamespace(client).list_records(params)  
+    res = json.loads(res.model_dump_json())
+    return res

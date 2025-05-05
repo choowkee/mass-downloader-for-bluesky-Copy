@@ -10,7 +10,7 @@ from mdfb.core.download_blobs import download_blobs
 from mdfb.core.resolve_handle import resolve_handle
 from mdfb.utils.validation import *
 from mdfb.utils.helpers import split_list
-from mdfb.utils.database import connect_db
+from mdfb.utils.database import connect_db, delete_user, check_user_has_posts
 from mdfb.utils.logging import setup_logging
 from mdfb.utils.constants import DEFAULT_THREADS 
 
@@ -18,7 +18,13 @@ def fetch_posts(did: str, post_types: dict, limit: int = 0, archive: bool = Fals
     post_uris = []
     for post_type, wanted in post_types.items():
         if wanted:
-            post_uris.extend(get_post_identifiers(did, post_type, limit=limit, archive=archive, update=update))
+            if update:
+                if check_user_has_posts(connect_db().cursor(), did, post_type):
+                    post_uris.extend(get_post_identifiers(did, post_type, limit=limit, archive=archive, update=update))
+                else:
+                    raise ValueError(f"This user has no post in database for feed_type: {post_type}, cannot update as you have not downloaded any post for feed_type: {post_type}.")
+            else:
+                post_uris.extend(get_post_identifiers(did, post_type, limit=limit, archive=archive, update=update))
     return post_uris
 
 def process_posts(posts: list, num_threads: int) -> list[dict]:
@@ -46,24 +52,35 @@ def process_posts(posts: list, num_threads: int) -> list[dict]:
 def main():
     parser = ArgumentParser()
 
-    parser.add_argument("directory", action="store", help="Directory for where all downloaded post will be stored")
-    parser.add_argument("--like", action="store_true", help="To retreive liked posts")
-    parser.add_argument("--post", action="store_true", help="To retreive posts")
-    parser.add_argument("--repost", action="store_true", help="To retreive reposts")
-    parser.add_argument("--threads", action="store", help=f"Number of threads, maximum of {MAX_THREADS} threads")
-    parser.add_argument("--format", action="store", help="Format string for filename e.g '{RKEY}_{DID}'. Valid keywords are: [RKEY, HANDLE, TEXT, DISPLAY_NAME, DID]")
+    subparsers = parser.add_subparsers(dest="subcommand", required=False)
 
-    group_archive_limit = parser.add_mutually_exclusive_group(required=True)
+    database_parser = subparsers.add_parser("db", help="Manage the database")
+    database_parser.add_argument("--delete_user", action="store", help="Delete all posts from this user")
+
+    download_parser = subparsers.add_parser("download", help="Download posts")
+    download_parser.add_argument("directory", action="store", help="Directory for where all downloaded post will be stored")
+    download_parser.add_argument("--like", action="store_true", help="To retreive liked posts")
+    download_parser.add_argument("--post", action="store_true", help="To retreive posts")
+    download_parser.add_argument("--repost", action="store_true", help="To retreive reposts")
+    download_parser.add_argument("--threads", action="store", help=f"Number of threads, maximum of {MAX_THREADS} threads")
+    download_parser.add_argument("--format", action="store", help="Format string for filename e.g '{RKEY}_{DID}'. Valid keywords are: [RKEY, HANDLE, TEXT, DISPLAY_NAME, DID]")
+
+    group_archive_limit = download_parser.add_mutually_exclusive_group(required=True)
     group_archive_limit.add_argument("--limit", "-l", action="store", help="The number of posts to be downloaded") 
     group_archive_limit.add_argument("--archive", action="store_true", help="To archive all posts of the specified types")
-    group_archive_limit.add_argument("--update", action="store_true", help="Downloads latest posts that haven't been downloaded")
+    group_archive_limit.add_argument("--update", "-u", action="store_true", help="Downloads latest posts that haven't been downloaded")
 
-    group_identifier = parser.add_mutually_exclusive_group(required=True)
+    group_identifier = download_parser.add_mutually_exclusive_group(required=True)
     group_identifier.add_argument("--did", "-d", action="store", help="The DID associated with the account")
     group_identifier.add_argument("--handle", action="store", help="The handle for the account e.g. johnny.bsky.social")
     
     args = parser.parse_args()
     try:
+        if getattr(args, "delete_user", False):
+            did = resolve_handle(args.delete_user)
+            delete_user(did)
+            return 
+
         did = validate_did(args.did) if args.did else resolve_handle(args.handle)
         directory = validate_directory(args.directory)
         filename_format_string = validate_format(args.format) if args.format else ""
