@@ -10,12 +10,12 @@ from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 from mdfb.utils.helpers import get_chunk
 from mdfb.utils.constants import DELAY, EXP_WAIT_MAX, EXP_WAIT_MIN, EXP_WAIT_MULTIPLIER, RETRIES
 
-def fetch_post_details(uris: list[str]) -> list[dict]:
+def fetch_post_details(uris: list[dict]) -> list[dict]:
     """
     fetch_post_details: Fetches post details from the given AT-URIs
 
     Args:
-        uris (list[str]): A list of AT-URIs
+        uris (list[dict]): A list of dictionaries of the desired AT-URIs from the post and user, user did and feed type 
 
     Returns:
         list[dict]: A list of dictionaries that contain post details
@@ -31,13 +31,19 @@ def fetch_post_details(uris: list[str]) -> list[dict]:
         if not res:
             continue
         records = json.loads(res.model_dump_json())
-                
-        for post in records["posts"]:
+
+        merged = _merge_uri_chunk_to_records(uri_chunk, records)
+
+        for post in merged:
             seen_uris.add(post["uri"])
             post_details = {
                 "rkey": _get_rkey(post["uri"]),
                 "text": post["record"].get("text", ""),
                 "response": post,
+                "user_did": post["user_did"],
+                "user_post_uri": post["user_post_uri"],
+                "poster_post_uri": post["poster_post_uri"],
+                "feed_type": post["feed_type"],
                 **_get_author_details(post["author"])
             }
         
@@ -51,9 +57,9 @@ def fetch_post_details(uris: list[str]) -> list[dict]:
             
             logger.info("Post details retrieved for URI: %s", post["uri"])
             all_post_details.append(post_details)
-        for uri in uri_chunk:
-            if uri not in seen_uris:
-                logger.info(f"The post associated with this URI is missing/deleted: {uri}")
+        for uris in uri_chunk:
+            if uris["poster_post_uri"] not in seen_uris:
+                logger.info(f"The post associated with this URI is missing/deleted: {uris["poster_post_uri"]}")
         time.sleep(DELAY)
     return all_post_details
 
@@ -80,7 +86,7 @@ def _extract_media(embed: dict) -> dict:
         media_links["mime_type"] = embed["video"]["mime_type"]   
     return media_links
 
-def _get_post_details_with_retries(uri_chunk: list, client: Client, logger: logging.Logger):
+def _get_post_details_with_retries(uri_chunk: list[dict], client: Client, logger: logging.Logger):
     try:
         return _get_post_details(uri_chunk, client, logger)
     except (RetryError, AtProtocolError):
@@ -91,10 +97,11 @@ def _get_post_details_with_retries(uri_chunk: list, client: Client, logger: logg
     wait=wait_exponential(multiplier=EXP_WAIT_MULTIPLIER, min=EXP_WAIT_MIN, max=EXP_WAIT_MAX), 
     stop=stop_after_attempt(RETRIES)
 )
-def _get_post_details(uri_chunk: list, client: Client, logger: logging.Logger):
+def _get_post_details(uri_chunk: list[dict], client: Client, logger: logging.Logger):
     try:
+        uris = [uris["poster_post_uri"] for uris in uri_chunk ]
         res = AppBskyFeedNamespace(client).get_posts(ParamsDict(
-            uris=uri_chunk
+            uris=uris
         ))
         return res
     except (AtProtocolError, RetryError):
@@ -111,3 +118,14 @@ def _get_author_details(author: dict) -> dict:
     author_details["handle"] = author["handle"]
     author_details["display_name"] = author["display_name"]
     return author_details
+
+def _merge_uri_chunk_to_records(uri_chunk: list[dict], records: dict) -> list[dict]:
+    merged = []
+
+    for uris in uri_chunk:
+        uri = uris["poster_post_uri"]
+        for post in records["posts"]:
+            if uri in post["uri"]:
+                combined = {**uris, **post}
+                merged.append(combined)
+    return merged

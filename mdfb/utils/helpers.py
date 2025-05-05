@@ -24,7 +24,7 @@ def split_list(input_list: list, split_by: int) -> list[list[str]]:
         start = end
     return res
 
-def get_chunk(posts: list, chunk_size: int):
+def get_chunk(posts: list, chunk_size: int) -> list:
     """
     get_chunk: splits a list into smaller chunks of a specified size.
 
