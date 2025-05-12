@@ -7,10 +7,67 @@ from atproto import Client
 from atproto.exceptions import AtProtocolError
 
 from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from mdfb.utils.constants import DELAY, EXP_WAIT_MAX, EXP_WAIT_MIN, EXP_WAIT_MULTIPLIER, RETRIES
 from mdfb.utils.database import check_post_exists, connect_db
+from mdfb.utils.helpers import split_list
+from mdfb.core.fetch_post_details import fetch_post_details
 
+def _get_post_identifiers_base(
+        client: Client, 
+        did: str, 
+        feed_type: str, 
+        logger: logging.Logger, 
+        cursor: str, 
+        db_cursor: sqlite3.Cursor,
+        limit: int = 0, 
+        archive: bool = False, 
+        update: bool = False
+    ) -> dict:
+    post_uris = []
+    fetch_amount = 100 if archive else min(100, limit)
+    res = _get_post_identifiers_with_retires(ParamsDict(
+        collection=f"app.bsky.feed.{feed_type}",
+        repo=did,
+        limit=fetch_amount,
+        cursor=cursor,
+    ), client, fetch_amount, logger)  
+    
+    limit -= fetch_amount
+    logger.info("Successful retrieved: %d posts, %d remaining", fetch_amount, limit)
+    records = res.get("records", {})
+    if not records:
+        logger.info(f"No more records to fetch for DID: {did}, feed_type: {feed_type}")
+        return {}
+    last_record_cid = re.search(r"\w+$", records[-1]["uri"])[0]
+    cursor = last_record_cid
+    for record in records:
+        if feed_type == "post":
+            uri = record["uri"]
+        else:
+            uri = record["value"]["subject"]["uri"]
+        if check_post_exists(db_cursor, did, record["uri"], feed_type) and update:
+            res = {
+                "cursor": cursor,
+                "limit": limit,
+                "post_uris": post_uris        
+            }
+            return {} if not post_uris else res
+        uris = {
+            "user_did": did,
+            "user_post_uri": record["uri"],
+            "feed_type": feed_type,
+            "poster_post_uri": uri,
+        }
+        post_uris.append(uris)
+    res = {
+        "cursor": cursor,
+        "limit": limit,
+        "post_uris": post_uris        
+    }
+    time.sleep(DELAY)
+    return res
 
 def get_post_identifiers(did: str, feed_type: str, limit: int = 0, archive: bool = False, update: bool = False) -> list[dict]:
     """
@@ -36,38 +93,46 @@ def get_post_identifiers(did: str, feed_type: str, limit: int = 0, archive: bool
     client = Client()
 
     while limit > 0 or archive:
-        fetch_amount = 100 if archive else min(100, limit)
-        res = _get_post_identifiers_with_retires(ParamsDict(
-            collection=f"app.bsky.feed.{feed_type}",
-            repo=did,
-            limit=fetch_amount,
-            cursor=cursor,
-        ), client, fetch_amount, logger)  
-        
-        limit -= fetch_amount
-        logger.info("Successful retrieved: %d posts, %d remaining", fetch_amount, limit)
-        records = res.get("records", {})
-        if not records:
-            logger.info(f"No more records to fetch for DID: {did}, feed_type: {feed_type}")
-            break
-        last_record_cid = re.search(r"\w+$", records[-1]["uri"])[0]
-        cursor = last_record_cid
-        for record in records:
-            if feed_type == "post":
-                uri = record["uri"]
-            else:
-                uri = record["value"]["subject"]["uri"]
-            if check_post_exists(db_cursor, did, record["uri"], feed_type) and update:
-                return post_uris
-            uris = {
-                "user_did": did,
-                "user_post_uri": record["uri"],
-                "feed_type": feed_type,
-                "poster_post_uri": uri,
-            }
-            post_uris.append(uris)
-        time.sleep(DELAY)
+        res = _get_post_identifiers_base(client, did, feed_type, logger, cursor, db_cursor, limit, archive, update)
+        if res == {}:
+            return post_uris
+        post_uris.extend(res["post_uris"])
+        limit = res["limit"]
+        cursor = res["cursor"]
     return post_uris
+
+def get_post_identifiers_media_types(did: str, feed_type: str, media_types: list[str], limit: int = 0, archive: bool = False, update: bool = False, num_threads: int = 1):
+    cursor = ""
+    con = connect_db()
+    db_cursor = con.cursor()
+    logger = logging.getLogger(__name__)
+    client = Client()
+    cursor = ""
+    res = []
+
+    while limit > 0 or archive:
+        identifiers = _get_post_identifiers_base(client, did, feed_type, logger, cursor, db_cursor, limit, archive, update)   
+        if identifiers == {}:
+            return res
+        post_details = []
+        post_uris = identifiers.get("post_uris", [])
+        post_batchs = split_list(post_uris, num_threads)
+
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = []
+            for post_batch in post_batchs:
+                futures.append(executor.submit(fetch_post_details, post_batch))
+            for future in as_completed(futures):
+                post_details.extend(future.result())
+
+        for post in post_details:
+            if "mime_type" in post:
+                for media_type in media_types:
+                    if media_type in post["mime_type"]:
+                        res.append(post)
+        limit = identifiers["limit"]        
+        cursor = identifiers["cursor"] 
+    return res
 
 def _get_post_identifiers_with_retires(params: ParamsDict, client: Client, fetch_amount: int, logger: logging.Logger):
     try:

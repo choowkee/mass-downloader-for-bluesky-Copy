@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import traceback
 
-from mdfb.core.get_post_identifiers import get_post_identifiers
+from mdfb.core.get_post_identifiers import get_post_identifiers, get_post_identifiers_media_types
 from mdfb.core.fetch_post_details import fetch_post_details
 from mdfb.core.download_blobs import download_blobs
 from mdfb.core.resolve_handle import resolve_handle
@@ -14,17 +14,20 @@ from mdfb.utils.database import connect_db, delete_user, check_user_has_posts
 from mdfb.utils.logging import setup_logging
 from mdfb.utils.constants import DEFAULT_THREADS 
 
-def fetch_posts(did: str, post_types: dict, limit: int = 0, archive: bool = False, update: bool = False) -> list[str]:
+def fetch_posts(did: str, post_types: dict, limit: int = 0, archive: bool = False, update: bool = False, media_types: list[str] = None, num_threads: int = 1) -> list[str]:
     post_uris = []
     for post_type, wanted in post_types.items():
         if wanted:
             if update:
                 if check_user_has_posts(connect_db().cursor(), did, post_type):
-                    post_uris.extend(get_post_identifiers(did, post_type, limit=limit, archive=archive, update=update))
+                    post_uris.extend(get_post_identifiers(did, post_type, archive=archive, update=update))
                 else:
                     raise ValueError(f"This user has no post in database for feed_type: {post_type}, cannot update as you have not downloaded any post for feed_type: {post_type}.")
             else:
-                post_uris.extend(get_post_identifiers(did, post_type, limit=limit, archive=archive, update=update))
+                if media_types:
+                    post_uris.extend(get_post_identifiers_media_types(did, post_type, media_types, limit=limit, archive=archive, update=update, num_threads=num_threads))
+                else:
+                    post_uris.extend(get_post_identifiers(did, post_type, limit=limit, archive=archive, update=update))
     return post_uris
 
 def process_posts(posts: list, num_threads: int) -> list[dict]:
@@ -62,8 +65,10 @@ def main():
     download_parser.add_argument("--like", action="store_true", help="To retreive liked posts")
     download_parser.add_argument("--post", action="store_true", help="To retreive posts")
     download_parser.add_argument("--repost", action="store_true", help="To retreive reposts")
-    download_parser.add_argument("--threads", action="store", help=f"Number of threads, maximum of {MAX_THREADS} threads")
-    download_parser.add_argument("--format", action="store", help="Format string for filename e.g '{RKEY}_{DID}'. Valid keywords are: [RKEY, HANDLE, TEXT, DISPLAY_NAME, DID]")
+    download_parser.add_argument("--threads", "-t", action="store", help=f"Number of threads, maximum of {MAX_THREADS} threads")
+    download_parser.add_argument("--format", "-f", action="store", help="Format string for filename e.g '{RKEY}_{DID}'. Valid keywords are: [RKEY, HANDLE, TEXT, DISPLAY_NAME, DID]")
+    download_parser.add_argument("--media-types", choices=["image", "video"], nargs="+", help="Only download posts that contain this type of media")    
+    download_parser.add_argument("--include", "-i", nargs=1, choices=["json", "media"], help="Whether to include the json of the post, or media attached to the post")
 
     group_archive_limit = download_parser.add_mutually_exclusive_group(required=True)
     group_archive_limit.add_argument("--limit", "-l", action="store", help="The number of posts to be downloaded") 
@@ -100,19 +105,21 @@ def main():
 
         print("Fetching post identifiers...")
         if args.archive:
-            posts = fetch_posts(did, post_types, archive=True)
+            posts = fetch_posts(did, post_types, archive=True, media_types=args.media_types, num_threads=num_threads)
         elif args.update:
-            posts = fetch_posts(did, post_types, archive=True, update=True)
+            posts = fetch_posts(did, post_types, archive=True, update=True, media_types=args.media_types, num_threads=num_threads)
         else:
             limit = validate_limit(args.limit)
-            posts = fetch_posts(did, post_types, limit=limit)
-
+            posts = fetch_posts(did, post_types, limit=limit, media_types=args.media_types, num_threads=num_threads)
         wanted_post_types = [post_type for post_type, wanted in post_types.items() if wanted]
         account = args.handle if args.handle else did
         validate_no_posts(posts, account, wanted_post_types, args.update)
 
-        print("Getting post details...")
-        post_details = process_posts(posts, num_threads)
+        if args.media_types:
+            post_details = posts
+        else:
+            print("Getting post details...")
+            post_details = process_posts(posts, num_threads)
 
         num_of_posts = len(post_details)
         post_links = split_list(post_details, num_threads)
@@ -122,11 +129,11 @@ def main():
                 futures = []
                 for batch_post_link in post_links:
                     if not filename_format_string:
-                        futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar))
+                        futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar, include=args.include))
                     else:
-                        futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar, filename_format_string))
+                        futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar, filename_format_string, include=args.include))
     except Exception as e:
         print(f"Error: {e}")
-        
+
 if __name__ == "__main__":
     main()  
