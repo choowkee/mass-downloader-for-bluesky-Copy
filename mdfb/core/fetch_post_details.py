@@ -99,7 +99,7 @@ def _get_post_details_with_retries(uri_chunk: list[dict], client: Client, logger
 )
 def _get_post_details(uri_chunk: list[dict], client: Client, logger: logging.Logger):
     try:
-        uris = [uris["poster_post_uri"] for uris in uri_chunk ]
+        uris = [uris["poster_post_uri"] for uris in uri_chunk]
         res = AppBskyFeedNamespace(client).get_posts(ParamsDict(
             uris=uris
         ))

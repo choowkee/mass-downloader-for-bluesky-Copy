@@ -1,4 +1,4 @@
-def split_list(input_list: list, split_by: int) -> list[list[str]]:
+def split_list(input_list: list, split_by: int) -> list[list]:
     """
     split_list: splits the list into the given number of equal sized chunks, used for distributing data so that it can be used for threads
 

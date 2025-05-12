@@ -103,9 +103,9 @@ The maximum number of threads is currently 3, that can be changed in the ``mdfb/
     - Downloads **all** of the latest posts that haven't been downloaded. 
   - ``directory``
     - Positional argument, where all the downloaded files are to be located. **Required**.
-  - ``--threads``
+  - ``--threads, -t``
     - The amount of threads wanted to download posts more efficiently, maximum number of threads is 3.
-  - ``--format``
+  - ``--format, -f``
     - Format string that file's will use for their name. Furthermore the keywords used are **case-sensitive** and should be all upper case.
   - ``--like``
     - To retrieved liked posts
@@ -113,6 +113,10 @@ The maximum number of threads is currently 3, that can be changed in the ``mdfb/
     - To retrieved reposts
   - ``--post``
     - To retrieved posts
+  - ``--media-types``
+    - Only download posts that contain this specified type of media. Valid keywords are: image, video.
+  - ``--include, -i``
+    - Whether to include **only** json information or media from the post
 - ``db``
   - ``--delete_user``
     - Deletes all posts associated with the given user from the database. Have to pass the **handle** of the user. 
@@ -121,3 +125,9 @@ The maximum number of threads is currently 3, that can be changed in the ``mdfb/
 At least one of the flags: ``--like``, ``--repost``, ``--post`` are **required** (when using `download`).
 
 Both (``--did, -d`` and ``--handle``) and (``--archive``, ``--limit, -l`` and ``--update``) are mutually exclusive, and one of each of them is **required** as well (when using `download`).
+
+The argument ``--media-types`` **needs** to be either before or after any positional arguments. 
+E.g. 
+```bash
+mdfb download --handle bsky.app --update --like --threads 3 --media-types image --format "{RKEY}_{HANDLE}" ./media/`
+```
