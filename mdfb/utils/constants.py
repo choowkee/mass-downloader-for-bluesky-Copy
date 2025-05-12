@@ -1,5 +1,5 @@
 MAX_THREADS = 3
-DELAY = 0.25       # in seconds
+DELAY = 0.25 # in seconds
 DEFAULT_THREADS = 1
 RETRIES = 5
 EXP_WAIT_MULTIPLIER = 1

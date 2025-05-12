@@ -84,8 +84,8 @@ def _append_extension(base_filename: str, mime_type: str = None, i: int = None) 
     if i:
         filename += f"_{i}"
     if mime_type:
-            file_type = re.search(r"\w+$", mime_type).group()
-            filename += f".{file_type}"
+        file_type = re.search(r"\w+$", mime_type).group()
+        filename += f".{file_type}"
     return filename
 
 def _download_media(post: dict, filename: str, did: str, file_path: str, logger: logging.Logger):

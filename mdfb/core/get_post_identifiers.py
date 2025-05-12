@@ -14,38 +14,6 @@ from mdfb.utils.database import check_post_exists, connect_db
 from mdfb.utils.helpers import split_list
 from mdfb.core.fetch_post_details import fetch_post_details
 
-def get_post_identifiers(did: str, feed_type: str, limit: int = 0, archive: bool = False, update: bool = False) -> list[dict]:
-    """
-    get_post_identifiers: Gets the given amount AT-URIs of the posts wanted from the desired account 
-
-    Args:
-        did (str): DID of the target account
-        feed_type (str): The type of post wanted from the account: like, repost and post
-        limit (optional, default=0, int): The amount wanted to get
-        archive (optional, default=False, bool): Will download all posts of the wanted type
-        update (optional, default=True, bool): Will only latest posts that have not been downloaded
-    Raises:
-        SystemExit: If there is a failure to retreive posts
-
-    Returns:
-        list[dict]: A list of dictionaries of the desired AT-URIs from the post and user, user did and feed type 
-    """
-    cursor = ""
-    con = connect_db()
-    db_cursor = con.cursor()
-    post_uris = []
-    logger = logging.getLogger(__name__)
-    client = Client()
-
-    while limit > 0 or archive:
-        res = _get_post_identifiers_base(client, did, feed_type, logger, cursor, db_cursor, limit, archive, update)
-        if res == {}:
-            return post_uris
-        post_uris.extend(res["post_uris"])
-        limit = res["limit"]
-        cursor = res["cursor"]
-    return post_uris
-
 def _get_post_identifiers_base(
         client: Client, 
         did: str, 
@@ -100,6 +68,38 @@ def _get_post_identifiers_base(
     }
     time.sleep(DELAY)
     return res
+
+def get_post_identifiers(did: str, feed_type: str, limit: int = 0, archive: bool = False, update: bool = False) -> list[dict]:
+    """
+    get_post_identifiers: Gets the given amount AT-URIs of the posts wanted from the desired account 
+
+    Args:
+        did (str): DID of the target account
+        feed_type (str): The type of post wanted from the account: like, repost and post
+        limit (optional, default=0, int): The amount wanted to get
+        archive (optional, default=False, bool): Will download all posts of the wanted type
+        update (optional, default=True, bool): Will only latest posts that have not been downloaded
+    Raises:
+        SystemExit: If there is a failure to retreive posts
+
+    Returns:
+        list[dict]: A list of dictionaries of the desired AT-URIs from the post and user, user did and feed type 
+    """
+    cursor = ""
+    con = connect_db()
+    db_cursor = con.cursor()
+    post_uris = []
+    logger = logging.getLogger(__name__)
+    client = Client()
+
+    while limit > 0 or archive:
+        res = _get_post_identifiers_base(client, did, feed_type, logger, cursor, db_cursor, limit, archive, update)
+        if res == {}:
+            return post_uris
+        post_uris.extend(res["post_uris"])
+        limit = res["limit"]
+        cursor = res["cursor"]
+    return post_uris
 
 def get_post_identifiers_media_types(did: str, feed_type: str, media_types: list[str], limit: int = 0, archive: bool = False, update: bool = False, num_threads: int = 1):
     cursor = ""
