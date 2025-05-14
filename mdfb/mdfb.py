@@ -67,7 +67,7 @@ def main():
     download_parser.add_argument("--repost", action="store_true", help="To retreive reposts")
     download_parser.add_argument("--threads", "-t", action="store", help=f"Number of threads, maximum of {MAX_THREADS} threads")
     download_parser.add_argument("--format", "-f", action="store", help="Format string for filename e.g '{RKEY}_{DID}'. Valid keywords are: [RKEY, HANDLE, TEXT, DISPLAY_NAME, DID]")
-    download_parser.add_argument("--media-types", choices=["image", "video"], nargs="+", help="Only download posts that contain this type of media")    
+    download_parser.add_argument("--media-types", choices=["image", "video", "text"], nargs="+", help="Only download posts that contain this type of media")    
     download_parser.add_argument("--include", "-i", nargs=1, choices=["json", "media"], help="Whether to include the json of the post, or media attached to the post")
 
     group_archive_limit = download_parser.add_mutually_exclusive_group(required=True)

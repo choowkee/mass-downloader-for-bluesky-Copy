@@ -114,7 +114,7 @@ The maximum number of threads is currently 3, that can be changed in the ``mdfb/
   - ``--post``
     - To retrieved posts
   - ``--media-types``
-    - Only download posts that contain this specified type of media. Valid keywords are: image, video.
+    - Only download posts that contain this specified type of media. Valid keywords are: image, video and text.
   - ``--include, -i``
     - Whether to include **only** json information or media from the post
 - ``db``
@@ -131,3 +131,9 @@ E.g.
 ```bash
 mdfb download --handle bsky.app --update --like --threads 3 --media-types image --format "{RKEY}_{HANDLE}" ./media/`
 ```
+
+Furthermore, if you want to filter by text and image or media and then use `--include` by media, this would not include any post filter by text. E.g.
+```bash
+mdfb download --handle bsky.app --update --like --threads 3 --media-types image text -i media ./media/`
+```
+This would just download images only.
