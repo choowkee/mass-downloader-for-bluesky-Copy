@@ -134,6 +134,6 @@ def main():
                         futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar, filename_format_string, include=args.include))
     except Exception as e:
         print(f"Error: {e}")
-        traceback.print_exc()
+
 if __name__ == "__main__":
     main()  
