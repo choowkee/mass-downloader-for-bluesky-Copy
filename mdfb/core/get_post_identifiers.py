@@ -126,9 +126,9 @@ def get_post_identifiers_media_types(did: str, feed_type: str, media_types: list
                 post_details.extend(future.result())
 
         for post in post_details:
-            if "mime_type" in post:
+            if "media_type" in post:
                 for media_type in media_types:
-                    if media_type in post["mime_type"]:
+                    if media_type in post["media_type"]:
                         res.append(post)
         limit = identifiers["limit"]        
         cursor = identifiers["cursor"] 

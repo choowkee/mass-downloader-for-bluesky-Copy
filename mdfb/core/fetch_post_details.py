@@ -76,14 +76,24 @@ def _extract_media(embed: dict) -> dict:
     media_links = {}
     if embed.get("images"):
         for image_obj in embed["images"]:
+            if "media_type" not in media_links:
+                media_links["media_type"] = ["image"]
+            else: media_links["media_type"].append("image")
             image = image_obj["image"]["ref"]["link"]
             if "images_cid" not in media_links:
                 media_links["images_cid"] = [image]
             else: media_links["images_cid"].append(image)
             media_links["mime_type"] = image_obj["image"]["mime_type"]
     if embed.get("video"):
+        if "media_type" not in media_links:
+            media_links["media_type"] = ["video"]
+        else: media_links["media_type"].append("video")
         media_links["video_cid"] = embed["video"]["ref"]["link"]
         media_links["mime_type"] = embed["video"]["mime_type"]   
+    if not embed.get("images") and not embed.get("video"):
+        if "media_type" not in media_links:
+            media_links["media_type"] = ["text"]
+        else: media_links["media_type"].append("text")
     return media_links
 
 def _get_post_details_with_retries(uri_chunk: list[dict], client: Client, logger: logging.Logger):
