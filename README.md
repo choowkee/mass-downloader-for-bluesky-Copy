@@ -48,6 +48,10 @@ mdfb download -d did:plc:z72i7hdynmk6r22z27h6tvur --archive --like --threads 3 -
 mdfb download --handle bsky.app --update --like --threads 3 --format "{RKEY}_{HANDLE}" ./media/
 ```
 
+```bash
+mdfb download --restore bsky.app --like --threads 3 --format "{RKEY}_{HANDLE}" ./media/
+```
+
 ### Naming Convention
 By default, ``mdfb``'s naming convention is: ``"{rkey}_{handle}_{text}"``. If it is downloading a post with multiple images then the naming will be: ``"{rkey}_{handle}_{text}_{i}"``, where "i" represents the order of the images in the post ranging from 1 - 4. In addition, the filenames are limited to 256 bytes and will be truncated down to that size. 
 
@@ -114,9 +118,11 @@ The maximum number of threads is currently 3, that can be changed in the ``mdfb/
   - ``--post``
     - To retrieved posts
   - ``--media-types``
-    - Only download posts that contain this specified type of media. Valid keywords are: image, video and text.
+    - Only download posts that contain this specified type of media. Valid keywords are: **image, video and text**.
   - ``--include, -i``
-    - Whether to include **only** json information or media from the post
+    - Whether to include **only** json information or media from the post.
+  - ``--restore``
+    - Downloads all posts stored in the database, can optionally pass a did or handle to only restore posts from that account.
 - ``db``
   - ``--delete_user``
     - Deletes all posts associated with the given user from the database. Have to pass the **handle** of the user. 
