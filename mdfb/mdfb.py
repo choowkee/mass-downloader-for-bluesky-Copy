@@ -1,19 +1,17 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
-import traceback
 
 from mdfb.core.get_post_identifiers import get_post_identifiers, get_post_identifiers_media_types
 from mdfb.core.fetch_post_details import fetch_post_details
 from mdfb.core.download_blobs import download_blobs
 from mdfb.core.resolve_handle import resolve_handle
-from mdfb.utils.validation import *
+from mdfb.utils.validation import validate_database, validate_directory, validate_download, validate_format, validate_limit, validate_no_posts, validate_threads
 from mdfb.utils.helpers import split_list
-from mdfb.utils.cli_helpers import account_or_did, get_did, is_did
+from mdfb.utils.cli_helpers import account_or_did, get_did
 from mdfb.utils.database import connect_db, delete_user, check_user_has_posts, restore_posts
 from mdfb.utils.logging import setup_logging
-from mdfb.utils.constants import DEFAULT_THREADS 
+from mdfb.utils.constants import DEFAULT_THREADS, MAX_THREADS 
 
 def fetch_posts(did: str, post_types: dict, limit: int = 0, archive: bool = False, update: bool = False, media_types: list[str] = None, num_threads: int = 1) -> list[dict]:
     post_uris = []
@@ -53,7 +51,7 @@ def process_posts(posts: list, num_threads: int) -> list[dict]:
             post_details.extend(future.result())
     return post_details
 
-def download_posts(post_links: list[dict], num_threads: int, filename_format_string: str, directory: str, include: str = None):
+def download_posts(post_links: list[dict], num_of_posts: int, num_threads: int, filename_format_string: str, directory: str, include: str = None):
     with tqdm(total=num_of_posts, desc="Downloading files") as progress_bar:
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
             futures = []
@@ -63,14 +61,14 @@ def download_posts(post_links: list[dict], num_threads: int, filename_format_str
                 else:
                     futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar, filename_format_string, include=include))
 
-def handle_db(args: argparse.Namespace, parser: argparse.ArgumentParser):
+def handle_db(args: Namespace, parser: ArgumentParser):
     validate_database()
     if getattr(args, "delete_user", False):
         did = resolve_handle(args.delete_user)
         delete_user(did)
         return 
 
-def handle_download(args: argparse.Namespace, parser: argparse.ArgumentParser):
+def handle_download(args: Namespace, parser: ArgumentParser):
     did = get_did(args)
     directory = validate_directory(args.directory, parser)
     filename_format_string = validate_format(args.format) if args.format else ""
@@ -93,7 +91,7 @@ def handle_download(args: argparse.Namespace, parser: argparse.ArgumentParser):
     elif args.update:
         posts = fetch_posts(did, post_types, archive=True, update=True, media_types=args.media_types, num_threads=num_threads)
     else:
-        limit = validate_limit(args.limit)
+        limit = validate_limit(args.limit)  # noqa: F405
         posts = fetch_posts(did, post_types, limit=limit, media_types=args.media_types, num_threads=num_threads)
     wanted_post_types = [post_type for post_type, wanted in post_types.items() if wanted]
     account = account_or_did(args, did)
@@ -108,7 +106,7 @@ def handle_download(args: argparse.Namespace, parser: argparse.ArgumentParser):
     num_of_posts = len(post_details)
     post_links = split_list(post_details, num_threads)
 
-    download_posts(post_links, num_threads, filename_format_string, directory, args.include)
+    download_posts(post_links, num_of_posts, num_threads, filename_format_string, directory, args.include)
 
 def main():
     parser = ArgumentParser()

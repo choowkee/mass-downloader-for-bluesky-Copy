@@ -58,10 +58,13 @@ def validate_no_posts(posts: list, account: str, post_types: list, update: bool,
 
 def validate_database():
     path = platformdirs.user_data_path(appname="mdfb")
+    logger = logging.getLogger(__name__)
     if not os.path.isdir(path):
         path = platformdirs.user_data_dir(appname="mdfb", ensure_exists=True)
+        logger.log("Creating database as the mdfb directory does not exist...")
         create_db(path)
     elif os.path.isdir(path) and not os.path.isfile(os.path.join(platformdirs.user_data_path(appname="mdfb"), "mdfb.db")): 
+        logger.log("Creating database as the mdfb directory does exist, but there is no database...")
         create_db(path)
 
 def validate_download(args: argparse.Namespace, parser: argparse.ArgumentParser):

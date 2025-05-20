@@ -1,6 +1,9 @@
 import json
 import sqlite3
-import re, time, logging
+import re
+import time
+import logging
+
 from atproto_client.namespaces.sync_ns import ComAtprotoRepoNamespace
 from atproto_client.models.com.atproto.repo.list_records import ParamsDict
 from atproto import Client

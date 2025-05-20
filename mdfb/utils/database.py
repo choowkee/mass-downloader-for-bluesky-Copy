@@ -5,7 +5,7 @@ import os
 def create_db(path: str):
     con = sqlite3.connect(os.path.join(path, "mdfb.db"))
     cur = con.cursor()
-    res = cur.execute("""
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS downloaded_posts (
             user_did TEXT NOT NULL,
             user_post_uri TEXT NOT NULL,
