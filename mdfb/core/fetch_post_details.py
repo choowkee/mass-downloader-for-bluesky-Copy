@@ -1,9 +1,12 @@
 import re
+import time
+import json
+import logging
+
 from atproto_client.namespaces.sync_ns import AppBskyFeedNamespace
 from atproto_client.models.com.atproto.repo.list_records import ParamsDict
 from atproto import Client
 from atproto.exceptions import AtProtocolError
-import time, json, logging
 
 from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 

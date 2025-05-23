@@ -1,6 +1,9 @@
 import json
 import sqlite3
-import re, time, logging
+import re
+import time
+import logging
+
 from atproto_client.namespaces.sync_ns import ComAtprotoRepoNamespace
 from atproto_client.models.com.atproto.repo.list_records import ParamsDict
 from atproto import Client
@@ -12,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from mdfb.utils.constants import DELAY, EXP_WAIT_MAX, EXP_WAIT_MIN, EXP_WAIT_MULTIPLIER, RETRIES
 from mdfb.utils.database import check_post_exists, connect_db
 from mdfb.utils.helpers import split_list
+from mdfb.utils.database import restore_posts
 from mdfb.core.fetch_post_details import fetch_post_details
 
 def _get_post_identifiers_base(
@@ -101,7 +105,7 @@ def get_post_identifiers(did: str, feed_type: str, limit: int = 0, archive: bool
         cursor = res["cursor"]
     return post_uris
 
-def get_post_identifiers_media_types(did: str, feed_type: str, media_types: list[str], limit: int = 0, archive: bool = False, update: bool = False, num_threads: int = 1):
+def get_post_identifiers_media_types(did: str, feed_type: str, media_types: list[str], limit: int = 0, archive: bool = False, update: bool = False, num_threads: int = 1, restore: bool = False):
     cursor = ""
     con = connect_db()
     db_cursor = con.cursor()
@@ -110,12 +114,13 @@ def get_post_identifiers_media_types(did: str, feed_type: str, media_types: list
     cursor = ""
     res = []
 
-    while limit > 0 or archive:
-        identifiers = _get_post_identifiers_base(client, did, feed_type, logger, cursor, db_cursor, limit, archive, update)   
-        if identifiers == {}:
-            return res
+    while limit > 0 or archive or restore:
+        if not restore:
+            identifiers = _get_post_identifiers_base(client, did, feed_type, logger, cursor, db_cursor, limit, archive, update)   
+            if identifiers == {}:
+                return res
         post_details = []
-        post_uris = identifiers.get("post_uris", [])
+        post_uris = identifiers.get("post_uris", []) if not restore else restore_posts(did, {feed_type: True})
         post_batchs = split_list(post_uris, num_threads)
 
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
@@ -130,8 +135,11 @@ def get_post_identifiers_media_types(did: str, feed_type: str, media_types: list
                 for media_type in media_types:
                     if media_type in post["media_type"]:
                         res.append(post)
-        limit = identifiers["limit"]        
-        cursor = identifiers["cursor"] 
+        if restore:
+            break
+        else:
+            limit = identifiers["limit"]        
+            cursor = identifiers["cursor"] 
     return res
 
 def _get_post_identifiers_with_retires(params: ParamsDict, client: Client, fetch_amount: int, logger: logging.Logger):
