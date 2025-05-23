@@ -47,8 +47,9 @@ def validate_format(filename_format_string: str) -> str:
 
 def validate_no_posts(posts: list, account: str, post_types: list, update: bool, did: str, restore: str):
     if restore:
-        if not check_user_exists(did):
-            raise ValueError(f"The account: {account} does not exist in the database.")
+        if did:
+            if not check_user_exists(did):
+                raise ValueError(f"The account: {account} does not exist in the database.")
         elif not posts:
             raise ValueError(f"There are no posts associated with account: {account}, for post_type(s): {post_types}, in the database.")
     if not posts and update:

@@ -9,11 +9,11 @@ from mdfb.core.resolve_handle import resolve_handle
 from mdfb.utils.validation import validate_database, validate_directory, validate_download, validate_format, validate_limit, validate_no_posts, validate_threads
 from mdfb.utils.helpers import split_list
 from mdfb.utils.cli_helpers import account_or_did, get_did
-from mdfb.utils.database import connect_db, delete_user, check_user_has_posts, restore_posts
+from mdfb.utils.database import connect_db, delete_user, check_user_has_posts
 from mdfb.utils.logging import setup_logging
 from mdfb.utils.constants import DEFAULT_THREADS, MAX_THREADS 
 
-def fetch_posts(did: str, post_types: dict, limit: int = 0, archive: bool = False, update: bool = False, media_types: list[str] = None, num_threads: int = 1) -> list[dict]:
+def fetch_posts(did: str, post_types: dict, limit: int = 0, archive: bool = False, update: bool = False, media_types: list[str] = None, num_threads: int = 1, restore: bool = False) -> list[dict]:
     post_uris = []
     for post_type, wanted in post_types.items():
         if wanted:
@@ -24,7 +24,7 @@ def fetch_posts(did: str, post_types: dict, limit: int = 0, archive: bool = Fals
                     raise ValueError(f"This user has no post in database for feed_type: {post_type}, cannot update as you have not downloaded any post for feed_type: {post_type}.")
             else:
                 if media_types:
-                    post_uris.extend(get_post_identifiers_media_types(did, post_type, media_types, limit=limit, archive=archive, update=update, num_threads=num_threads))
+                    post_uris.extend(get_post_identifiers_media_types(did, post_type, media_types, limit=limit, archive=archive, update=update, num_threads=num_threads, restore=restore))
                 else:
                     post_uris.extend(get_post_identifiers(did, post_type, limit=limit, archive=archive, update=update))
     return post_uris
@@ -85,13 +85,13 @@ def handle_download(args: Namespace, parser: ArgumentParser):
 
     print("Fetching post identifiers...")
     if args.restore:
-        posts = restore_posts(did, post_types)
+        posts = fetch_posts(did, post_types, archive=True, media_types=args.media_types, num_threads=num_threads, restore=True)
     elif args.archive:
         posts = fetch_posts(did, post_types, archive=True, media_types=args.media_types, num_threads=num_threads)
     elif args.update:
         posts = fetch_posts(did, post_types, archive=True, update=True, media_types=args.media_types, num_threads=num_threads)
     else:
-        limit = validate_limit(args.limit)  # noqa: F405
+        limit = validate_limit(args.limit)
         posts = fetch_posts(did, post_types, limit=limit, media_types=args.media_types, num_threads=num_threads)
     wanted_post_types = [post_type for post_type, wanted in post_types.items() if wanted]
     account = account_or_did(args, did)
