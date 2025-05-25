@@ -21,11 +21,11 @@ def monitor_resources(interval: int = 5):
     resource_formatter = logging.Formatter('%(asctime)s - %(message)s')
     resource_handler.setFormatter(resource_formatter)
     resource_logger.addHandler(resource_handler)
-    resource_logger.propagate = False  # Prevent logs from propagating to root logger    
+    resource_logger.propagate = False  
     process = psutil.Process()
 
     while True:
-        mem = process.memory_info().rss / (1024 * 1024)  # in MB
-        cpu = process.cpu_percent(interval=1)  # % CPU usage since last call
+        mem = process.memory_info().rss / (1024 * 1024)  
+        cpu = process.cpu_percent(interval=1)  
         resource_logger.info(f"Memory Usage: {mem:.2f} MB, CPU Usage: {cpu:.2f}%")
         time.sleep(interval)
