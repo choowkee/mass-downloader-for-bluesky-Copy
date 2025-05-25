@@ -24,6 +24,7 @@ httpcore = "^1.0.9"
 requests-mock = "^1.12.1"
 pytest-mock = "^3.14.0"
 pytest = "^8.3.4"
+psutil = "^7.0.0"
 
 [project]
 name = "mdfb"

@@ -1,4 +1,5 @@
 from argparse import ArgumentParser, Namespace
+import threading
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -10,7 +11,7 @@ from mdfb.utils.validation import validate_database, validate_directory, validat
 from mdfb.utils.helpers import split_list
 from mdfb.utils.cli_helpers import account_or_did, get_did
 from mdfb.utils.database import connect_db, delete_user, check_user_has_posts
-from mdfb.utils.logging import setup_logging
+from mdfb.utils.logging import setup_logging, monitor_resources
 from mdfb.utils.constants import DEFAULT_THREADS, MAX_THREADS 
 
 def fetch_posts(did: str, post_types: dict, limit: int = 0, archive: bool = False, update: bool = False, media_types: list[str] = None, num_threads: int = 1, restore: bool = False) -> list[dict]:
@@ -137,6 +138,9 @@ def main():
     group_archive_limit.add_argument("--restore", nargs="?", const=True, help="Restore all posts in the database or for those for a specified handle")
     group_archive_limit.add_argument("--archive", action="store_true", help="To archive all posts of the specified types")
     group_archive_limit.add_argument("--update", "-u", action="store_true", help="Downloads latest posts that haven't been downloaded")
+
+    monitor_thread = threading.Thread(target=monitor_resources, daemon=True)
+    monitor_thread.start()
 
     args = parser.parse_args()
     try:
