@@ -12,7 +12,7 @@ from atproto.exceptions import AtProtocolError
 from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from mdfb.utils.constants import DELAY, EXP_WAIT_MAX, EXP_WAIT_MIN, EXP_WAIT_MULTIPLIER, RETRIES
+from mdfb.utils.constants import DELAY, EXP_WAIT_MAX, EXP_WAIT_MIN, EXP_WAIT_MULTIPLIER, RETRIES, DEFAULT_THREADS
 from mdfb.utils.database import check_post_exists, connect_db
 from mdfb.utils.helpers import split_list
 from mdfb.utils.database import restore_posts
@@ -105,7 +105,7 @@ def get_post_identifiers(did: str, feed_type: str, limit: int = 0, archive: bool
         cursor = res["cursor"]
     return post_uris
 
-def get_post_identifiers_media_types(did: str, feed_type: str, media_types: list[str], limit: int = 0, archive: bool = False, update: bool = False, num_threads: int = 1, restore: bool = False):
+def get_post_identifiers_media_types(did: str, feed_type: str, media_types: list[str], limit: int = 0, archive: bool = False, update: bool = False, num_threads: int = DEFAULT_THREADS, restore: bool = False):
     cursor = ""
     con = connect_db()
     db_cursor = con.cursor()

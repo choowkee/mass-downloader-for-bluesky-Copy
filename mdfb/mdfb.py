@@ -1,8 +1,6 @@
 from argparse import ArgumentParser, Namespace
-import threading
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import traceback
 
 from mdfb.core.get_post_identifiers import get_post_identifiers, get_post_identifiers_media_types
 from mdfb.core.fetch_post_details import fetch_post_details
@@ -12,7 +10,7 @@ from mdfb.utils.validation import validate_database, validate_directory, validat
 from mdfb.utils.helpers import split_list
 from mdfb.utils.cli_helpers import account_or_did, get_did
 from mdfb.utils.database import connect_db, delete_user, check_user_has_posts
-from mdfb.utils.logging import setup_logging, monitor_resources
+from mdfb.utils.logging import setup_logging, setup_resource_monitoring
 from mdfb.utils.constants import DEFAULT_THREADS, MAX_THREADS 
 
 def fetch_posts(did: str, post_types: dict, limit: int = 0, archive: bool = False, update: bool = False, media_types: list[str] = None, num_threads: int = 1, restore: bool = False) -> list[dict]:
@@ -75,6 +73,8 @@ def handle_download(args: Namespace, parser: ArgumentParser):
     directory = validate_directory(args.directory, parser)
     filename_format_string = validate_format(args.format) if args.format else ""
     setup_logging(directory)
+    if args.resource:
+        setup_resource_monitoring(directory)
     validate_database()
 
     num_threads = validate_threads(args.threads) if args.threads else DEFAULT_THREADS
@@ -124,6 +124,7 @@ def main():
     common_parser.add_argument("--format", "-f", action="store", help="Format string for filename e.g '{RKEY}_{DID}'. Valid keywords are: [RKEY, HANDLE, TEXT, DISPLAY_NAME, DID]")
     common_parser.add_argument("--did", "-d", action="store", help="The DID associated with the account")
     common_parser.add_argument("--handle", action="store", help="The handle for the account e.g. johnny.bsky.social")
+    common_parser.add_argument("--resource", "-r", action="store_true", help="Logs resource usage of memory and cpu at 5 second intervals")
 
     database_parser = subparsers.add_parser("db", help="Manage the database", parents=[common_parser])
     database_parser.add_argument("--delete_user", action="store", help="Delete all posts from this user")
@@ -140,9 +141,6 @@ def main():
     group_archive_limit.add_argument("--archive", action="store_true", help="To archive all posts of the specified types")
     group_archive_limit.add_argument("--update", "-u", action="store_true", help="Downloads latest posts that haven't been downloaded")
 
-    monitor_thread = threading.Thread(target=monitor_resources, daemon=True)
-    monitor_thread.start()
-
     args = parser.parse_args()
     try:
         if args.subcommand == "download":
@@ -153,7 +151,6 @@ def main():
 
     except Exception as e:
         print(f"Error: {e}")
-        traceback.print_exc()
         
 if __name__ == "__main__":
     main()  
