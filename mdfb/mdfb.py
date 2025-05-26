@@ -2,6 +2,7 @@ from argparse import ArgumentParser, Namespace
 import threading
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import traceback
 
 from mdfb.core.get_post_identifiers import get_post_identifiers, get_post_identifiers_media_types
 from mdfb.core.fetch_post_details import fetch_post_details
@@ -73,8 +74,8 @@ def handle_download(args: Namespace, parser: ArgumentParser):
     did = get_did(args)
     directory = validate_directory(args.directory, parser)
     filename_format_string = validate_format(args.format) if args.format else ""
-    validate_database()
     setup_logging(directory)
+    validate_database()
 
     num_threads = validate_threads(args.threads) if args.threads else DEFAULT_THREADS
     
@@ -152,6 +153,7 @@ def main():
 
     except Exception as e:
         print(f"Error: {e}")
-
+        traceback.print_exc()
+        
 if __name__ == "__main__":
     main()  
