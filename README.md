@@ -126,6 +126,9 @@ The maximum number of threads is currently 3, that can be changed in the ``mdfb/
 - ``db``
   - ``--delete_user``
     - Deletes all posts associated with the given user from the database. Have to pass the **handle** of the user. 
+- ``generic commands``
+  - ``--resource, -r``
+    - Logs resource usage for memory and cpu every 5 seconds. 
 
 ### Note
 At least one of the flags: ``--like``, ``--repost``, ``--post`` are **required** (when using `download`).
