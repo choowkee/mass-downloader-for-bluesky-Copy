@@ -11,3 +11,4 @@ responses/
 *__pycache__
 dist/
 media/
+scripts/
