@@ -2,7 +2,6 @@ import json
 import os
 import re
 import time
-import threading 
 
 from atproto_client.namespaces.sync_ns import ComAtprotoSyncNamespace
 from atproto_client.models.com.atproto.repo.list_records import ParamsDict
@@ -15,9 +14,6 @@ from mdfb.utils.database import insert_post, connect_db
 from tqdm import tqdm
 
 from tenacity import retry, stop_after_attempt, wait_exponential
-
-downloaded = set()
-lock = threading.Lock()
 
 def download_blobs(posts: list[dict], file_path: str, progress_bar: tqdm, filename_format_string: str = "{RKEY}_{HANDLE}_{TEXT}", include: str = None) -> None:
     """
@@ -34,10 +30,6 @@ def download_blobs(posts: list[dict], file_path: str, progress_bar: tqdm, filena
     sucessful_downloads = []
 
     for post in posts:
-        if _check_downloaded(post["poster_post_uri"]):
-            sucessful_downloads.append((post["user_did"], post["user_post_uri"], post["feed_type"], post["poster_post_uri"]))
-            progress_bar.update(1)
-            continue
         did = post["did"]
         filename_options = {}
         for valid_filename_option in VALID_FILENAME_OPTIONS:
@@ -52,7 +44,7 @@ def download_blobs(posts: list[dict], file_path: str, progress_bar: tqdm, filena
                 _download_media(post, filename, did, file_path, logger)
         else:
             _download_media(post, filename, did, file_path, logger)
-            _download_json(file_path, filename, post, logger)  
+            _download_json(file_path, filename, post, logger)                
         sucessful_downloads.append((post["user_did"], post["user_post_uri"], post["feed_type"], post["poster_post_uri"]))
         progress_bar.update(1)
     con = connect_db()
@@ -139,11 +131,3 @@ def _truncate_filename(filename: str, MAX_BYTE: int) -> str:
         if byte_len > MAX_BYTE:
             return filename[:i]
     return filename
-
-def _check_downloaded(poster_post_uri: str) -> bool:
-    with lock:
-        if poster_post_uri in downloaded:
-            return True
-        else:
-            downloaded.add(poster_post_uri)
-        return False
