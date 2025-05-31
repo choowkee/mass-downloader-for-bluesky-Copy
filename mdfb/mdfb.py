@@ -1,5 +1,3 @@
-import logging
-
 from argparse import ArgumentParser, Namespace
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -15,7 +13,7 @@ from mdfb.utils.database import connect_db, delete_user, check_user_has_posts, r
 from mdfb.utils.logging import setup_logging, setup_resource_monitoring
 from mdfb.utils.constants import DEFAULT_THREADS, MAX_THREADS 
 
-def fetch_posts(did: str, post_types: dict[str, bool], limit: int = 0, archive: bool = False, update: bool = False, media_types: list[str] = None, num_threads: int = 1, restore: bool = False) -> list[dict[str, str]]:
+def fetch_posts(did: str, post_types: dict, limit: int = 0, archive: bool = False, update: bool = False, media_types: list[str] = None, num_threads: int = 1, restore: bool = False) -> list[dict]:
     post_uris = []
     for post_type, wanted in post_types.items():
         if wanted:
@@ -56,7 +54,6 @@ def process_posts(posts: list, num_threads: int) -> list[dict]:
     return post_details
 
 def download_posts(post_links: list[dict], num_of_posts: int, num_threads: int, filename_format_string: str, directory: str, include: str = None):
-    logger = logging.getLogger(__name__)
     with tqdm(total=num_of_posts, desc="Downloading files") as progress_bar:
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
             futures = []
@@ -65,13 +62,7 @@ def download_posts(post_links: list[dict], num_of_posts: int, num_threads: int, 
                     futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar, include=include))
                 else:
                     futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar, filename_format_string, include=include))
-                for future in as_completed(futures):
-                    try:
-                        future.result()
-                    except Exception as e:
-                        print(f"Error in thread: {e}")
-                        logger.log(f"Error in thread: {e}")
-                        
+
 def handle_db(args: Namespace, parser: ArgumentParser):
     validate_database()
     if getattr(args, "delete_user", False):
@@ -151,6 +142,7 @@ def main():
     group_archive_limit.add_argument("--restore", nargs="?", const=True, help="Restore all posts in the database or for those for a specified handle")
     group_archive_limit.add_argument("--archive", action="store_true", help="To archive all posts of the specified types")
     group_archive_limit.add_argument("--update", "-u", action="store_true", help="Downloads latest posts that haven't been downloaded")
+
     args = parser.parse_args()
     try:
         if args.subcommand == "download":
@@ -158,6 +150,7 @@ def main():
             handle_download(args, parser)
         elif args.subcommand == "db":
             handle_db(args, parser)
+
     except Exception as e:
         print(f"Error: {e}")
         
