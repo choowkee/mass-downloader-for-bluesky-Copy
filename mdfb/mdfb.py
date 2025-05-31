@@ -65,13 +65,13 @@ def download_posts(post_links: list[dict], num_of_posts: int, num_threads: int, 
                     futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar, include=include))
                 else:
                     futures.append(executor.submit(download_blobs, batch_post_link, directory, progress_bar, filename_format_string, include=include))
-                for future in as_completed(futures):
-                    try:
-                        future.result()
-                    except Exception as e:
-                        print(f"Error in thread: {e}")
-                        logger.log(f"Error in thread: {e}")
-                        
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    print(f"Error in thread: {e}")
+                    logger.log(f"Error in thread: {e}")
+                    
 def handle_db(args: Namespace, parser: ArgumentParser):
     validate_database()
     if getattr(args, "delete_user", False):
