@@ -2,6 +2,7 @@ import re
 import time
 import json
 import logging
+import threading
 
 from atproto_client.namespaces.sync_ns import AppBskyFeedNamespace
 from atproto_client.models.com.atproto.repo.list_records import ParamsDict
@@ -13,7 +14,10 @@ from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 from mdfb.utils.helpers import get_chunk
 from mdfb.utils.constants import DELAY, EXP_WAIT_MAX, EXP_WAIT_MIN, EXP_WAIT_MULTIPLIER, RETRIES
 
-def fetch_post_details(uris: list[dict]) -> list[dict]:
+cache = {}
+lock = threading.Lock()
+
+def fetch_post_details(uris: list[dict[str, str]]) -> list[dict[str, str]]:
     """
     fetch_post_details: Fetches post details from the given AT-URIs
 
@@ -29,6 +33,14 @@ def fetch_post_details(uris: list[dict]) -> list[dict]:
     client = Client("https://public.api.bsky.app/")
     
     for uri_chunk in get_chunk(uris, 25):
+        cache_hits = []
+        for uri in uri_chunk:
+            cache_res = _check_cache(uri["poster_post_uri"])
+            if cache_res:
+                cache_res.update(uri)
+                cache_hits.append(cache_res)
+                uri_chunk.remove(uri)
+
         logger.info(f"Fetching details from {len(uri_chunk)} URIs")
         res = _get_post_details_with_retries(uri_chunk, client, logger)
         if not res:
@@ -59,7 +71,10 @@ def fetch_post_details(uris: list[dict]) -> list[dict]:
             post_details.update(_extract_media(embed_media))
             
             logger.info("Post details retrieved for URI: %s", post["uri"])
+            _add_to_cache(post_details)
             all_post_details.append(post_details)
+        if cache_hits:
+            all_post_details.extend(cache_hits)
         for uris in uri_chunk:
             if uris["poster_post_uri"] not in seen_uris:
                 logger.info(f"The post associated with this URI is missing/deleted: {uris["poster_post_uri"]}")
@@ -68,7 +83,7 @@ def fetch_post_details(uris: list[dict]) -> list[dict]:
 
 def _extract_media(embed: dict) -> dict:
     """
-    _extract_media: Extracts information from the media, or embede, key in the post details JSON response from the atproto API: app.bsky.feed.getPosts
+    _extract_media: Extracts information from the media, or embed, key in the post details JSON response from the atproto API: app.bsky.feed.getPosts
 
     Args:
         embed (dict): The embed key from the API response of atproto API: app.bsky.feed.getPosts
@@ -142,3 +157,14 @@ def _merge_uri_chunk_to_records(uri_chunk: list[dict], records: dict) -> list[di
                 combined = {**uris, **post}
                 merged.append(combined)
     return merged
+
+def _check_cache(poster_post_uri: str) -> dict | None:
+    with lock:
+        if poster_post_uri in cache:
+            return cache[poster_post_uri]
+        else:
+            return None
+
+def _add_to_cache(post: dict):
+    with lock:
+        cache[post["poster_post_uri"]] = post
