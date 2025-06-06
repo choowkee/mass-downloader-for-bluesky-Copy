@@ -1,4 +1,5 @@
 import logging
+import traceback
 
 from argparse import ArgumentParser, Namespace
 from tqdm import tqdm
@@ -9,8 +10,8 @@ from mdfb.core.fetch_post_details import fetch_post_details
 from mdfb.core.download_blobs import download_blobs
 from mdfb.core.resolve_handle import resolve_handle
 from mdfb.utils.validation import validate_database, validate_directory, validate_download, validate_format, validate_limit, validate_no_posts, validate_threads
-from mdfb.utils.helpers import split_list
-from mdfb.utils.cli_helpers import account_or_did, get_did
+from mdfb.utils.helpers import split_list, dedupe_posts
+from mdfb.utils.cli_helpers import account_or_did, get_did 
 from mdfb.utils.database import connect_db, delete_user, check_user_has_posts, restore_posts
 from mdfb.utils.logging import setup_logging, setup_resource_monitoring
 from mdfb.utils.constants import DEFAULT_THREADS, MAX_THREADS 
@@ -27,11 +28,11 @@ def fetch_posts(did: str, post_types: dict[str, bool], limit: int = 0, archive: 
             else:
                 if media_types:
                     post_uris.extend(get_post_identifiers_media_types(did, post_type, media_types, limit=limit, archive=archive, update=update, num_threads=num_threads, restore=restore))
-                if restore:
+                elif restore:
                     post_uris.extend(restore_posts(did, {post_type: wanted}))
                 else:
                     post_uris.extend(get_post_identifiers(did, post_type, limit=limit, archive=archive, update=update))
-    return post_uris
+    return dedupe_posts(post_uris)
 
 def process_posts(posts: list, num_threads: int) -> list[dict]:
     """
@@ -70,7 +71,7 @@ def download_posts(post_links: list[dict], num_of_posts: int, num_threads: int, 
                     future.result()
                 except Exception as e:
                     print(f"Error in thread: {e}")
-                    logger.log(f"Error in thread: {e}")
+                    logger.error(f"Error in thread: {e}", exc_info=True)
                     
 def handle_db(args: Namespace, parser: ArgumentParser):
     validate_database()
@@ -160,6 +161,7 @@ def main():
             handle_db(args, parser)
     except Exception as e:
         print(f"Error: {e}")
+        traceback.print_exc()
         
 if __name__ == "__main__":
     main()  
