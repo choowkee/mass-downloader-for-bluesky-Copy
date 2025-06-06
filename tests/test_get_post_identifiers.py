@@ -37,7 +37,7 @@ def test_get_post_identifiers_liked(mocker):
     mock_response.model_dump_json.return_value = json.dumps(mock_json_response)
     mock_request = mocker.patch("atproto_client.namespaces.sync_ns.ComAtprotoRepoNamespace.list_records", return_value=mock_response)
     result = get_post_identifiers("did:example:1234", "like", 2)
-    assert result == ['at://did:plc:xlqcxpk53spbhlypj6wmvvke/app.bsky.feed.post/3ld6bzuenjs2a', 'at://did:plc:vc7f4oafdgxsihk4cry2xpze/app.bsky.feed.post/3lbxe3z66hk2e']
+    assert result == [{'user_did': 'did:example:1234', 'user_post_uri': ['at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.like/3ld7z46debo2g'], 'feed_type': ['like'], 'poster_post_uri': 'at://did:plc:xlqcxpk53spbhlypj6wmvvke/app.bsky.feed.post/3ld6bzuenjs2a'}, {'user_did': 'did:example:1234', 'user_post_uri': ['at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.like/3lbxh76jfuq2y'], 'feed_type': ['like'], 'poster_post_uri': 'at://did:plc:vc7f4oafdgxsihk4cry2xpze/app.bsky.feed.post/3lbxe3z66hk2e'}]
     mock_request.assert_called_once_with({'collection': 'app.bsky.feed.like', 'repo': 'did:example:1234', 'limit': 2, 'cursor': ''})
 
 def test_get_post_identifiers_no_likes(mocker):

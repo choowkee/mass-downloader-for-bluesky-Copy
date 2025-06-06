@@ -1,16 +1,19 @@
 import pytest
+import argparse
 from mdfb.utils.validation import *
 
 
 def test_validate_directory(mocker):
     mock_dir = "./tests"
-    result = validate_directory(mock_dir)
+    mock_parser = argparse.ArgumentParser()
+    result = validate_directory(mock_dir, mock_parser)
     assert result == mock_dir
 
 def test_validate_directory_no_path(mocker):
-    mock_dir = ""
+    mock_dir = "nonexistantdir"
+    mock_parser = argparse.ArgumentParser()
     with pytest.raises(ValueError):
-        validate_directory(mock_dir)
+        validate_directory(mock_dir, mock_parser)
 
 def test_validate_limit(mocker):
     mock_limit = "78"
