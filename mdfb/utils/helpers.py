@@ -43,3 +43,14 @@ def get_chunk(posts: list, chunk_size: int) -> list:
     for i in range(0, len(posts), chunk_size):
         chunk = posts[i:i+chunk_size]
         yield chunk
+
+def dedupe_posts(posts: list[dict]) -> list[dict]:
+    res = {} # poster_post_uri : post
+    for post in posts:
+        poster_post_uri = post["poster_post_uri"]
+        if poster_post_uri in res:
+            res[poster_post_uri]["feed_type"].extend(post["feed_type"])
+            res[poster_post_uri]["user_post_uri"].extend(post["user_post_uri"])
+        else:
+            res[poster_post_uri] = post
+    return [v for k, v in res.items()]

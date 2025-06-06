@@ -106,6 +106,8 @@ def restore_posts(did: str, post_types: dict) -> list[dict]:
 
     rows = cur.execute(query, params)
     for row in rows:
+        row["user_post_uri"] = [row["user_post_uri"]]
+        row["feed_type"] = [row["feed_type"]]
         uris.append(row)
     return uris
 

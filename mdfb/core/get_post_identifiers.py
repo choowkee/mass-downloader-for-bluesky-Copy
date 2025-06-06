@@ -60,8 +60,8 @@ def _get_post_identifiers_base(
             return {} if not post_uris else res
         uris = {
             "user_did": did,
-            "user_post_uri": record["uri"],
-            "feed_type": feed_type,
+            "user_post_uri": [record["uri"]],
+            "feed_type": [feed_type],
             "poster_post_uri": uri,
         }
         post_uris.append(uris)

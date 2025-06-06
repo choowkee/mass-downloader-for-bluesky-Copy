@@ -2,7 +2,6 @@ import json
 import os
 import re
 import time
-import threading 
 
 from atproto_client.namespaces.sync_ns import ComAtprotoSyncNamespace
 from atproto_client.models.com.atproto.repo.list_records import ParamsDict
@@ -15,9 +14,6 @@ from mdfb.utils.database import insert_post, connect_db
 from tqdm import tqdm
 
 from tenacity import retry, stop_after_attempt, wait_exponential
-
-downloaded = set()
-lock = threading.Lock()
 
 def download_blobs(posts: list[dict], file_path: str, progress_bar: tqdm, filename_format_string: str = "{RKEY}_{HANDLE}_{TEXT}", include: str = None) -> None:
     """
@@ -34,10 +30,6 @@ def download_blobs(posts: list[dict], file_path: str, progress_bar: tqdm, filena
     sucessful_downloads = []
 
     for post in posts:
-        if _check_downloaded(post["poster_post_uri"]):
-            sucessful_downloads.append((post["user_did"], post["user_post_uri"], post["feed_type"], post["poster_post_uri"]))
-            progress_bar.update(1)
-            continue
         did = post["did"]
         filename_options = {}
         for valid_filename_option in VALID_FILENAME_OPTIONS:
@@ -53,8 +45,7 @@ def download_blobs(posts: list[dict], file_path: str, progress_bar: tqdm, filena
         else:
             _download_media(post, filename, did, file_path, logger)
             _download_json(file_path, filename, post, logger)  
-        sucessful_downloads.append((post["user_did"], post["user_post_uri"], post["feed_type"], post["poster_post_uri"]))
-        progress_bar.update(1)
+        sucessful_downloads.extend(_successful_download(post, progress_bar))
     con = connect_db()
     insert_post(con.cursor(), sucessful_downloads)
     con.commit()
@@ -80,7 +71,7 @@ def _get_blob(did: str, cid: str, filename: str, file_path: str, logger: logging
         with open(os.path.join(file_path, filename), "wb") as file:
             file.write(res)
     except Exception:
-        logger.error(f"Error occured for downloading this file, DID: {did}, CID: {cid}")
+        logger.error(f"Error occured for downloading this file, DID: {did}, CID: {cid}", exc_info=True)
         raise 
     
 def _make_base_filename(filename_options: dict, format_filename: str) -> str:
@@ -140,10 +131,9 @@ def _truncate_filename(filename: str, MAX_BYTE: int) -> str:
             return filename[:i]
     return filename
 
-def _check_downloaded(poster_post_uri: str) -> bool:
-    with lock:
-        if poster_post_uri in downloaded:
-            return True
-        else:
-            downloaded.add(poster_post_uri)
-        return False
+def _successful_download(post: dict, progress_bar: tqdm) -> list[tuple]:
+    res = []
+    for i in range(len(post["feed_type"])):
+        res.append((post["user_did"], post["user_post_uri"][i], post["feed_type"][i], post["poster_post_uri"]))
+    progress_bar.update(1)
+    return res
