@@ -18,20 +18,24 @@ from mdfb.utils.constants import DEFAULT_THREADS, MAX_THREADS
 
 def fetch_posts(did: str, post_types: dict[str, bool], limit: int = 0, archive: bool = False, update: bool = False, media_types: list[str] = None, num_threads: int = 1, restore: bool = False) -> list[dict[str, str]]:
     post_uris = []
-    for post_type, wanted in post_types.items():
-        if wanted:
-            if update:
-                if check_user_has_posts(connect_db().cursor(), did, post_type):
-                    post_uris.extend(get_post_identifiers(did, post_type, archive=archive, update=update))
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = []
+        for post_type, wanted in post_types.items():
+            if wanted:
+                if update:
+                    if check_user_has_posts(connect_db().cursor(), did, post_type):
+                        futures.append(executor.submit(get_post_identifiers, did, post_type, archive=archive, update=update))
+                    else:
+                        raise ValueError(f"This user has no post in database for feed_type: {post_type}, cannot update as you have not downloaded any post for feed_type: {post_type}.")
                 else:
-                    raise ValueError(f"This user has no post in database for feed_type: {post_type}, cannot update as you have not downloaded any post for feed_type: {post_type}.")
-            else:
-                if media_types:
-                    post_uris.extend(get_post_identifiers_media_types(did, post_type, media_types, limit=limit, archive=archive, update=update, num_threads=num_threads, restore=restore))
-                elif restore:
-                    post_uris.extend(restore_posts(did, {post_type: wanted}))
-                else:
-                    post_uris.extend(get_post_identifiers(did, post_type, limit=limit, archive=archive, update=update))
+                    if media_types:
+                        futures.append(executor.submit(get_post_identifiers_media_types, did, post_type, media_types, limit=limit, archive=archive, update=update, num_threads=num_threads, restore=restore))
+                    elif restore:
+                        futures.append(executor.submit(restore_posts, did, {post_type: wanted}))
+                    else:
+                        futures.append(executor.submit(get_post_identifiers, did, post_type, limit=limit, archive=archive, update=update))
+        for future in as_completed(futures):
+            post_uris.extend(future.result())
     return dedupe_posts(post_uris)
 
 def process_posts(posts: list, num_threads: int) -> list[dict]:
