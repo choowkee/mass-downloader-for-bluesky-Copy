@@ -71,7 +71,7 @@ class TestDownloadBlobs:
         with tempfile.TemporaryDirectory() as temp_dir:
             yield temp_dir
     
-    @pytest.fixture(scope="class")
+    @pytest.fixture(scope="function")
     def successful_get_blob(self):
         with patch("atproto_client.namespaces.sync_ns.ComAtprotoSyncNamespace.get_blob") as mock_download_blob: 
             mock_blob_data = b"0x3eb"   
@@ -81,7 +81,7 @@ class TestDownloadBlobs:
                 "expected": mock_blob_data
             }
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture(scope="function")
     def exceed_retries_get_blob(self):
         with patch("atproto_client.namespaces.sync_ns.ComAtprotoSyncNamespace.get_blob") as mock_download_blob: 
             mock_download_blob.side_effect = [
@@ -91,7 +91,7 @@ class TestDownloadBlobs:
             ]
             yield mock_download_blob
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture(scope="function")
     def retries_then_succeeds_get_blob(self):
         with patch("atproto_client.namespaces.sync_ns.ComAtprotoSyncNamespace.get_blob") as mock_download_blob: 
             mock_blob_data = b"0x3eb"   
@@ -104,13 +104,13 @@ class TestDownloadBlobs:
                 "expected": mock_blob_data
             }   
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture(scope="function")
     def successful_download_blobs(self):
         mock_post = [{'rkey': '3lqwz2kuzg22s', 'text': '', 'response': {'user_did': 'did:plc:u6iyyil77bqv5fknwauj3tfk', 'user_post_uri': ['at://did:plc:u6iyyil77bqv5fknwauj3tfk/app.bsky.feed.repost/3lqx3fnspgj2s'], 'feed_type': ['repost'], 'poster_post_uri': 'at://did:plc:3eatnvb2dim4l7fiwln5wow6/app.bsky.feed.post/3lqwz2kuzg22s', 'author': {'did': 'did:plc:3eatnvb2dim4l7fiwln5wow6', 'handle': 'dailybunnies.bsky.social', 'associated': {'chat': {'allow_incoming': 'none', 'py_type': 'app.bsky.actor.defs#profileAssociatedChat'}, 'feedgens': None, 'labeler': None, 'lists': None, 'starter_packs': None, 'py_type': 'app.bsky.actor.defs#profileAssociated'}, 'avatar': 'https://cdn.bsky.app/img/avatar/plain/did:plc:3eatnvb2dim4l7fiwln5wow6/bafkreifz2jzlibiyldp75uhdi4xhlpww6khmkt5brpj2jif274kocrv3xq@jpeg', 'created_at': '2024-10-20T14:50:10.507Z', 'display_name': 'daily bunnies 🐇✨', 'labels': [], 'viewer': None, 'py_type': 'app.bsky.actor.defs#profileViewBasic'}, 'cid': 'bafyreib3qtxun7gvvpjaxk666xxvkltu2oyyghekziswhwtmutz6xz2vh4', 'indexed_at': '2025-06-06T14:07:49.256Z', 'record': {'created_at': '2025-06-06T14:07:44.486Z', 'text': '', 'embed': {'images': [{'alt': 'A small, white bunny stands on its hind legs, peering out a window. Lush green trees are visible outside.', 'image': {'mime_type': 'image/jpeg', 'size': 659942, 'ref': {'link': 'bafkreiamy7yinrdcqrqtka4xwhhkbcblv4zxudjlupslnuamzm6tbxofze'}, 'py_type': 'blob'}, 'aspect_ratio': {'height': 1440, 'width': 1080, 'py_type': 'app.bsky.embed.defs#aspectRatio'}, 'py_type': 'app.bsky.embed.images#image'}], 'py_type': 'app.bsky.embed.images'}, 'entities': None, 'facets': None, 'labels': None, 'langs': ['en'], 'reply': None, 'tags': None, 'py_type': 'app.bsky.feed.post'}, 'uri': 'at://did:plc:3eatnvb2dim4l7fiwln5wow6/app.bsky.feed.post/3lqwz2kuzg22s', 'embed': {'images': [{'alt': 'A small, white bunny stands on its hind legs, peering out a window. Lush green trees are visible outside.', 'fullsize': 'https://cdn.bsky.app/img/feed_fullsize/plain/did:plc:3eatnvb2dim4l7fiwln5wow6/bafkreiamy7yinrdcqrqtka4xwhhkbcblv4zxudjlupslnuamzm6tbxofze@jpeg', 'thumb': 'https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:3eatnvb2dim4l7fiwln5wow6/bafkreiamy7yinrdcqrqtka4xwhhkbcblv4zxudjlupslnuamzm6tbxofze@jpeg', 'aspect_ratio': {'height': 1440, 'width': 1080, 'py_type': 'app.bsky.embed.defs#aspectRatio'}, 'py_type': 'app.bsky.embed.images#viewImage'}], 'py_type': 'app.bsky.embed.images#view'}, 'labels': [], 'like_count': 4187, 'quote_count': 35, 'reply_count': 68, 'repost_count': 386, 'threadgate': None, 'viewer': None, 'py_type': 'app.bsky.feed.defs#postView'}, 'user_did': 'did:plc:u6iyyil77bqv5fknwauj3tfk', 'user_post_uri': ['at://did:plc:u6iyyil77bqv5fknwauj3tfk/app.bsky.feed.repost/3lqx3fnspgj2s'], 'poster_post_uri': 'at://did:plc:3eatnvb2dim4l7fiwln5wow6/app.bsky.feed.post/3lqwz2kuzg22s', 'feed_type': ['repost'], 'did': 'did:plc:3eatnvb2dim4l7fiwln5wow6', 'handle': 'dailybunnies.bsky.social', 'display_name': 'daily bunnies 🐇✨', 'media_type': ['image'], 'images_cid': ['bafkreiamy7yinrdcqrqtka4xwhhkbcblv4zxudjlupslnuamzm6tbxofze'], 'mime_type': 'image/jpeg'}]
         post_response = mock_post[0]["response"]
         mock_base_filename = "3lqwz2kuzg22s_dailybunnies.bsky.social_"
         with patch("tqdm.tqdm") as mock_tdqm, \
-        patch("mdfb.utils.database.insert_post") as mock_insert_post:
+        patch("mdfb.utils.database.insert_post"):
             yield {
                 "post": mock_post,
                 "post_response": post_response,
