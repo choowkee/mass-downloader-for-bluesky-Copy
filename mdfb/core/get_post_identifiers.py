@@ -3,6 +3,7 @@ import sqlite3
 import re
 import time
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from atproto_client.namespaces.sync_ns import ComAtprotoRepoNamespace
 from atproto_client.models.com.atproto.repo.list_records import ParamsDict
@@ -10,7 +11,6 @@ from atproto import Client
 from atproto.exceptions import AtProtocolError
 
 from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from mdfb.utils.constants import DELAY, EXP_WAIT_MAX, EXP_WAIT_MIN, EXP_WAIT_MULTIPLIER, RETRIES, DEFAULT_THREADS
 from mdfb.utils.database import check_post_exists, connect_db
@@ -105,7 +105,7 @@ def get_post_identifiers(did: str, feed_type: str, limit: int = 0, archive: bool
         cursor = res["cursor"]
     return post_uris
 
-def get_post_identifiers_media_types(did: str, feed_type: str, media_types: list[str], limit: int = 0, archive: bool = False, update: bool = False, num_threads: int = DEFAULT_THREADS, restore: bool = False):
+def get_post_identifiers_media_types(did: str, feed_type: str, media_types: list[str], limit: int = 0, archive: bool = False, update: bool = False, num_threads: int = DEFAULT_THREADS, restore: bool = False) -> list[dict]:
     cursor = ""
     con = connect_db()
     db_cursor = con.cursor()
@@ -154,7 +154,11 @@ def _get_post_identifiers_with_retires(params: ParamsDict, client: Client, fetch
     stop=stop_after_attempt(RETRIES)
 )
 def _get_post_identifiers(params: ParamsDict, client: Client, fetch_amount: int, logger: logging.Logger):
-    logger.info(f"Attempting to fetch up to {fetch_amount} posts for DID: {params["repo"]}, feed_type: {params["collection"]}")
-    res = ComAtprotoRepoNamespace(client).list_records(params)  
-    res = json.loads(res.model_dump_json())
-    return res
+    try:
+        logger.info(f"Attempting to fetch up to {fetch_amount} posts for DID: {params["repo"]}, feed_type: {params["collection"]}")
+        res = ComAtprotoRepoNamespace(client).list_records(params)  
+        res = json.loads(res.model_dump_json())
+        return res
+    except (AtProtocolError, RetryError):
+        logger.error(f"Error occurred fetching posts from: {params}, fetch amount: {fetch_amount}", exc_info=True)
+        raise

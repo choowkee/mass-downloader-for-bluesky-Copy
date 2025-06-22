@@ -1,5 +1,5 @@
 import pytest
-from mdfb.utils.helpers import *
+from mdfb.utils.helpers import split_list, get_chunk
 
 def test_split_list():
     mock_posts = ["hello", "world", "!"]
